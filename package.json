@@ -1,0 +1,20 @@
+{
+  "name": "saludvital",
+  "version": "1.0.0",
+  "description": "Proyecto full-stack con Node.js y Angular",
+  "main": "index.js",
+  "scripts": {
+    "start:backend": "cd backend && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npx ng serve",
+    "build:frontend": "cd frontend && npx ng build",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run start:frontend\""
+  },
+  "keywords": ["nodejs", "angular", "fullstack", "saludvital"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
