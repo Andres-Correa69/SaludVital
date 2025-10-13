@@ -1,44 +1,80 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const config = require('./config');
+const { connectToDatabase } = require('./src/database');
 
-// Middleware
-app.use(cors());
+const authRoutes = require('./src/routes/auth.routes');
+const pacientesRoutes = require('./src/routes/pacientes.routes');
+const citasRoutes = require('./src/routes/citas.routes');
+const resultadosRoutes = require('./src/routes/resultados.routes');
+const alertasRoutes = require('./src/routes/alertas.routes');
+
+const app = express();
+const PORT = config.port;
+
+// Seguridad y utilidades
+app.use(helmet());
+app.use(morgan('dev'));
+app.use(cookieParser());
+
+// CORS
+app.use(cors(config.cors));
+
+// Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Conexión a BD
+connectToDatabase().catch((err) => {
+  console.error('Error conectando a la base de datos:', err);
+  process.exit(1);
+});
+
 // Rutas básicas
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Servidor SaludVital funcionando correctamente',
     version: '1.0.0',
+    environment: config.nodeEnv,
     timestamp: new Date().toISOString()
   });
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'OK',
     message: 'API funcionando correctamente',
     uptime: process.uptime()
   });
 });
 
-// Ruta de ejemplo para la API
-app.get('/api/usuarios', (req, res) => {
-  res.json([
-    { id: 1, nombre: 'Usuario Ejemplo', email: 'usuario@ejemplo.com' }
-  ]);
-});
+// Rutas API
+app.use('/api/auth', authRoutes);
+app.use('/api/pacientes', pacientesRoutes);
+app.use('/api/citas', citasRoutes);
+app.use('/api/resultados', resultadosRoutes);
+app.use('/api/alertas', alertasRoutes);
 
-// Manejo de errores 404
+// 404
 app.use((req, res) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Ruta no encontrada',
     message: `La ruta ${req.originalUrl} no existe`
+  });
+});
+
+// Error handler
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(err.status || 500).json({
+    error: 'Error interno del servidor',
+    message: err.message || 'Ocurrió un error inesperado'
   });
 });
 

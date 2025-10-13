@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "SaludVital API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "saludvital-collection"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+      }
+    },
+    {
+      "name": "Auth - Registro",
+      "request": {
+        "method": "POST",
+        "header": [{"key":"Content-Type","value":"application/json"}],
+        "body": {"mode":"raw","raw":"{\n  \"nombre\": \"Usuario Demo\",\n  \"email\": \"demo@correo.com\",\n  \"password\": \"Password123\",\n  \"rol\": \"paciente\"\n}"},
+        "url": { "raw": "{{baseUrl}}/api/auth/registro", "host": ["{{baseUrl}}"], "path": ["api","auth","registro"] }
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{"key":"Content-Type","value":"application/json"}],
+        "body": {"mode":"raw","raw":"{\n  \"email\": \"demo@correo.com\",\n  \"password\": \"Password123\"\n}"},
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+      }
+    },
+    {
+      "name": "Pacientes",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/pacientes","host":["{{baseUrl}}"],"path":["api","pacientes"]}}
+        },
+        {
+          "name": "Crear",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"user\": \"{{userId}}\",\n  \"documento\": \"123456789\",\n  \"telefono\": \"3001234567\",\n  \"direccion\": \"Calle 1 #2-3\",\n  \"fechaNacimiento\": \"1990-01-01\"\n}"},"url":{"raw":"{{baseUrl}}/api/pacientes","host":["{{baseUrl}}"],"path":["api","pacientes"]}}
+        },
+        {
+          "name": "Obtener",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/pacientes/{{pacienteId}}","host":["{{baseUrl}}"],"path":["api","pacientes","{{pacienteId}}"]}}
+        },
+        {
+          "name": "Actualizar",
+          "request": {"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"telefono\": \"3000000000\"\n}"},"url":{"raw":"{{baseUrl}}/api/pacientes/{{pacienteId}}","host":["{{baseUrl}}"],"path":["api","pacientes","{{pacienteId}}"]}}
+        },
+        {
+          "name": "Eliminar",
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/pacientes/{{pacienteId}}","host":["{{baseUrl}}"],"path":["api","pacientes","{{pacienteId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "Citas",
+      "item": [
+        {
+          "name": "Listar",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/citas","host":["{{baseUrl}}"],"path":["api","citas"]}}
+        },
+        {
+          "name": "Crear",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"paciente\": \"{{pacienteId}}\",\n  \"fecha\": \"2025-01-01T09:00:00.000Z\",\n  \"motivo\": \"Control\"\n}"},"url":{"raw":"{{baseUrl}}/api/citas","host":["{{baseUrl}}"],"path":["api","citas"]}}
+        },
+        {
+          "name": "Obtener",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/citas/{{citaId}}","host":["{{baseUrl}}"],"path":["api","citas","{{citaId}}"]}}
+        },
+        {
+          "name": "Actualizar",
+          "request": {"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"estado\": \"confirmada\"\n}"},"url":{"raw":"{{baseUrl}}/api/citas/{{citaId}}","host":["{{baseUrl}}"],"path":["api","citas","{{citaId}}"]}}
+        },
+        {
+          "name": "Eliminar",
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/citas/{{citaId}}","host":["{{baseUrl}}"],"path":["api","citas","{{citaId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "Resultados",
+      "item": [
+        {"name":"Listar","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/resultados","host":["{{baseUrl}}"],"path":["api","resultados"]}}},
+        {"name":"Crear","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"paciente\": \"{{pacienteId}}\",\n  \"tipo\": \"Laboratorio\",\n  \"descripcion\": \"Hemograma\",\n  \"fechaResultado\": \"2025-01-02\"\n}"},"url":{"raw":"{{baseUrl}}/api/resultados","host":["{{baseUrl}}"],"path":["api","resultados"]}}},
+        {"name":"Obtener","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/resultados/{{resultadoId}}","host":["{{baseUrl}}"],"path":["api","resultados","{{resultadoId}}"]}}},
+        {"name":"Actualizar","request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"descripcion\": \"Hemograma completo\"\n}"},"url":{"raw":"{{baseUrl}}/api/resultados/{{resultadoId}}","host":["{{baseUrl}}"],"path":["api","resultados","{{resultadoId}}"]}}},
+        {"name":"Eliminar","request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/resultados/{{resultadoId}}","host":["{{baseUrl}}"],"path":["api","resultados","{{resultadoId}}"]}}}
+      ]
+    },
+    {
+      "name": "Alertas",
+      "item": [
+        {"name":"Listar","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/alertas","host":["{{baseUrl}}"],"path":["api","alertas"]}}},
+        {"name":"Crear","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"paciente\": \"{{pacienteId}}\",\n  \"titulo\": \"Hidratación\",\n  \"mensaje\": \"Bebe agua\",\n  \"prioridad\": \"media\"\n}"},"url":{"raw":"{{baseUrl}}/api/alertas","host":["{{baseUrl}}"],"path":["api","alertas"]}}},
+        {"name":"Obtener","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/alertas/{{alertaId}}","host":["{{baseUrl}}"],"path":["api","alertas","{{alertaId}}"]}}},
+        {"name":"Actualizar","request":{"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"leida\": true\n}"},"url":{"raw":"{{baseUrl}}/api/alertas/{{alertaId}}","host":["{{baseUrl}}"],"path":["api","alertas","{{alertaId}}"]}}},
+        {"name":"Eliminar","request":{"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{baseUrl}}/api/alertas/{{alertaId}}","host":["{{baseUrl}}"],"path":["api","alertas","{{alertaId}}"]}}}
+      ]
+    }
+  ],
+  "variable": [
+    {"key":"baseUrl","value":"http://localhost:3000"},
+    {"key":"token","value":""},
+    {"key":"userId","value":""},
+    {"key":"pacienteId","value":""},
+    {"key":"citaId","value":""},
+    {"key":"resultadoId","value":""},
+    {"key":"alertaId","value":""}
+  ]
+}
+
+

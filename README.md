@@ -53,9 +53,29 @@ SaludVital/
 
 ## API Endpoints
 
+Backend (Node.js + Express + MongoDB):
+
 - `GET /` - Información del servidor
 - `GET /api/health` - Estado de la API
-- `GET /api/usuarios` - Lista de usuarios (ejemplo)
+- `POST /api/auth/registro` - Registro de usuario
+- `POST /api/auth/login` - Login y obtención de JWT
+- `CRUD /api/pacientes` - Requiere JWT
+- `CRUD /api/citas` - Requiere JWT
+- `CRUD /api/resultados` - Requiere JWT
+- `CRUD /api/alertas` - Requiere JWT
+
+Variables de entorno (crear archivo `.env` en `backend/`):
+
+```
+PORT=3000
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:4200
+MONGO_URI=mongodb://127.0.0.1:27017/saludvital
+JWT_SECRET=cambia_este_secret
+JWT_EXPIRES_IN=7d
+```
+
+Colección Postman disponible en `backend/postman_collection.json`.
 
 ## Tecnologías Utilizadas
 
