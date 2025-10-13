@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resultados Médicos - Salud Vital</title>
+  <link rel="stylesheet" href="resultados-medicos.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <app-navbar></app-navbar>
+
+  <!-- Contenido Principal -->
+  <main class="resultados-container">
+    <!-- Header -->
+    <div class="resultados-header">
+      <h1 class="page-title">
+        <i class="fas fa-file-medical-alt"></i>
+        Resultados Médicos
+      </h1>
+      <p class="page-subtitle">Consulta y gestiona tus resultados de laboratorio y exámenes médicos</p>
+      
+      <div class="header-actions">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input 
+            type="text" 
+            placeholder="Buscar en resultados..." 
+            [(ngModel)]="terminoBusqueda"
+            (input)="filtrarResultados()">
+        </div>
+        
+        <div class="filter-controls">
+          <select class="filter-select" [(ngModel)]="filtroTipo" (change)="filtrarResultados()">
+            <option value="todos">Todos los Tipos</option>
+            <option value="laboratorio">Laboratorio</option>
+            <option value="imagen">Imágenes</option>
+            <option value="especialidad">Especialidad</option>
+            <option value="general">Medicina General</option>
+          </select>
+          
+          <select class="filter-select" [(ngModel)]="filtroEstado" (change)="filtrarResultados()">
+            <option value="todos">Todos los Estados</option>
+            <option value="normal">Dentro de rango</option>
+            <option value="anormal">Fuera de rango</option>
+            <option value="pendiente">Pendiente revisión</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estadísticas Rápidas -->
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-icon total">
+          <i class="fas fa-file-medical"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{contadores.totales}}</div>
+          <div class="stat-label">Total Resultados</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon normal">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{contadores.normales}}</div>
+          <div class="stat-label">Dentro de Rango</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon alert">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{contadores.anormales}}</div>
+          <div class="stat-label">Requiere Atención</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon pending">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{contadores.pendientes}}</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div class="resultados-content">
+      <!-- Lista de Resultados -->
+      <div class="resultados-list">
+        <!-- Resultados Recientes -->
+        <div class="resultados-section" *ngIf="resultadosRecientes.length > 0">
+          <h3 class="section-title">
+            <i class="fas fa-history"></i>
+            Resultados Recientes
+            <span class="badge">{{resultadosRecientes.length}}</span>
+          </h3>
+          
+          <div class="resultados-grid">
+            <div *ngFor="let resultado of resultadosRecientes" class="resultado-card" [class]="'status-' + resultado.estado">
+              <div class="resultado-header">
+                <div class="resultado-tipo">
+                  <div class="tipo-icon">
+                    <i class="fas" [class]="getTipoIcono(resultado.tipo)"></i>
+                  </div>
+                  <div class="tipo-info">
+                    <h4 class="examen-nombre">{{resultado.nombreExamen}}</h4>
+                    <span class="examen-tipo">{{getTipoTexto(resultado.tipo)}}</span>
+                  </div>
+                </div>
+                
+                <div class="resultado-status" [class]="'status-' + resultado.estado">
+                  <i class="fas" [class]="getEstadoIcono(resultado.estado)"></i>
+                  {{getEstadoTexto(resultado.estado)}}
+                </div>
+              </div>
+              
+              <div class="resultado-body">
+                <div class="resultado-info">
+                  <div class="info-item">
+                    <i class="fas fa-calendar"></i>
+                    <div class="info-content">
+                      <span class="info-label">Fecha del Examen</span>
+                      <span class="info-value">{{formatearFecha(resultado.fechaExamen)}}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="info-item">
+                    <i class="fas fa-user-md"></i>
+                    <div class="info-content">
+                      <span class="info-label">Médico Solicitante</span>
+                      <span class="info-value">{{resultado.medicoSolicitante}}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="info-item">
+                    <i class="fas fa-hospital"></i>
+                    <div class="info-content">
+                      <span class="info-label">Laboratorio</span>
+                      <span class="info-value">{{resultado.laboratorio}}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="resultado-valores" *ngIf="resultado.valores && resultado.valores.length > 0">
+                  <div class="valores-header">
+                    <span class="valores-title">Valores Principales</span>
+                    <span class="valores-fecha">{{formatearFecha(resultado.fechaResultado)}}</span>
+                  </div>
+                  
+                  <div class="valores-list">
+                    <div *ngFor="let valor of resultado.valores.slice(0, 3)" class="valor-item" [class]="valor.estado">
+                      <span class="valor-nombre">{{valor.nombre}}</span>
+                      <div class="valor-detalle">
+                        <span class="valor-resultado">{{valor.resultado}} {{valor.unidad}}</span>
+                        <span class="valor-rango">({{valor.rangoNormal}})</span>
+                      </div>
+                      <i class="fas" [class]="getValorIcono(valor.estado)"></i>
+                    </div>
+                  </div>
+                  
+                  <div class="valores-more" *ngIf="resultado.valores.length > 3">
+                    <span>+{{resultado.valores.length - 3}} más valores</span>
+                  </div>
+                </div>
+                
+                <div class="resultado-observaciones" *ngIf="resultado.observaciones">
+                  <span class="obs-label">Observaciones:</span>
+                  <p class="obs-text">{{resultado.observaciones}}</p>
+                </div>
+              </div>
+              
+              <div class="resultado-footer">
+                <div class="resultado-actions">
+                  <button class="action-btn view" (click)="verDetalles(resultado)" title="Ver detalles completos">
+                    <i class="fas fa-eye"></i>
+                    Ver Detalles
+                  </button>
+                  <button class="action-btn download" (click)="descargarResultado(resultado)" title="Descargar PDF">
+                    <i class="fas fa-download"></i>
+                    PDF
+                  </button>
+                  <button class="action-btn share" (click)="compartirResultado(resultado)" title="Compartir resultado">
+                    <i class="fas fa-share-alt"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Todos los Resultados -->
+        <div class="resultados-section" *ngIf="resultadosFiltrados.length > 0 && resultadosFiltrados.length !== resultadosRecientes.length">
+          <h3 class="section-title">
+            <i class="fas fa-list"></i>
+            Todos los Resultados
+            <span class="badge">{{resultadosFiltrados.length}}</span>
+          </h3>
+          
+          <div class="resultados-table">
+            <div class="table-header">
+              <div class="col examen">Examen</div>
+              <div class="col tipo">Tipo</div>
+              <div class="col fecha">Fecha</div>
+              <div class="col estado">Estado</div>
+              <div class="col acciones">Acciones</div>
+            </div>
+            
+            <div class="table-body">
+              <div *ngFor="let resultado of resultadosFiltrados" class="table-row" [class]="'status-' + resultado.estado">
+                <div class="col examen">
+                  <div class="examen-info">
+                    <h5>{{resultado.nombreExamen}}</h5>
+                    <span>{{resultado.laboratorio}}</span>
+                  </div>
+                </div>
+                
+                <div class="col tipo">
+                  <span class="tipo-badge" [class]="resultado.tipo">
+                    <i class="fas" [class]="getTipoIcono(resultado.tipo)"></i>
+                    {{getTipoTexto(resultado.tipo)}}
+                  </span>
+                </div>
+                
+                <div class="col fecha">
+                  <span class="fecha-text">{{formatearFechaCorta(resultado.fechaExamen)}}</span>
+                </div>
+                
+                <div class="col estado">
+                  <span class="estado-badge" [class]="'status-' + resultado.estado">
+                    <i class="fas" [class]="getEstadoIcono(resultado.estado)"></i>
+                    {{getEstadoTexto(resultado.estado)}}
+                  </span>
+                </div>
+                
+                <div class="col acciones">
+                  <div class="action-buttons">
+                    <button class="action-btn view" (click)="verDetalles(resultado)" title="Ver detalles">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn download" (click)="descargarResultado(resultado)" title="Descargar">
+                      <i class="fas fa-download"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div class="empty-state" *ngIf="resultadosFiltrados.length === 0">
+          <div class="empty-icon">
+            <i class="fas fa-file-medical"></i>
+          </div>
+          <h3>No hay resultados médicos</h3>
+          <p>No se encontraron resultados que coincidan con tu búsqueda.</p>
+          <button class="btn-secondary" (click)="limpiarFiltros()">
+            <i class="fas fa-times"></i>
+            Limpiar Filtros
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel Lateral -->
+      <div class="sidebar">
+        <!-- Resumen de Salud -->
+        <div class="sidebar-card">
+          <h4 class="sidebar-title">
+            <i class="fas fa-heartbeat"></i>
+            Resumen de Salud
+          </h4>
+          
+          <div class="health-summary">
+            <div class="health-metric">
+              <div class="metric-info">
+                <span class="metric-label">Exámenes Realizados</span>
+                <span class="metric-value">{{contadores.totales}}</span>
+              </div>
+              <div class="metric-chart">
+                <div class="chart-bar" [style.width]="(contadores.totales / 20 * 100) + '%'"></div>
+              </div>
+            </div>
+            
+            <div class="health-metric">
+              <div class="metric-info">
+                <span class="metric-label">Indicadores Normales</span>
+                <span class="metric-value">{{contadores.normales}}/{{contadores.totales}}</span>
+              </div>
+              <div class="metric-chart">
+                <div class="chart-bar normal" [style.width]="(contadores.normales / contadores.totales * 100) + '%'"></div>
+              </div>
+            </div>
+            
+            <div class="health-metric">
+              <div class="metric-info">
+                <span class="metric-label">Atención Requerida</span>
+                <span class="metric-value">{{contadores.anormales}}/{{contadores.totales}}</span>
+              </div>
+              <div class="metric-chart">
+                <div class="chart-bar alert" [style.width]="(contadores.anormales / contadores.totales * 100) + '%'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alertas Importantes -->
+        <div class="sidebar-card" *ngIf="alertasImportantes.length > 0">
+          <h4 class="sidebar-title">
+            <i class="fas fa-exclamation-circle"></i>
+            Alertas Importantes
+            <span class="alert-badge">{{alertasImportantes.length}}</span>
+          </h4>
+          
+          <div class="alertas-list">
+            <div *ngFor="let alerta of alertasImportantes" class="alerta-item" [class]="alerta.nivel">
+              <div class="alerta-icon">
+                <i class="fas" [class]="getAlertaIcono(alerta.nivel)"></i>
+              </div>
+              <div class="alerta-content">
+                <p class="alerta-text">{{alerta.mensaje}}</p>
+                <span class="alerta-fecha">{{alerta.fecha}}</span>
+              </div>
+              <button class="alerta-action" (click)="verAlerta(alerta)">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exámenes Pendientes -->
+        <div class="sidebar-card" *ngIf="examenesPendientes.length > 0">
+          <h4 class="sidebar-title">
+            <i class="fas fa-clock"></i>
+            Exámenes Pendientes
+            <span class="badge">{{examenesPendientes.length}}</span>
+          </h4>
+          
+          <div class="pendientes-list">
+            <div *ngFor="let examen of examenesPendientes" class="pendiente-item">
+              <div class="pendiente-icon">
+                <i class="fas fa-flask"></i>
+              </div>
+              <div class="pendiente-content">
+                <h5>{{examen.nombre}}</h5>
+                <p>{{examen.instrucciones}}</p>
+                <span class="pendiente-fecha">Programado: {{examen.fechaProgramada}}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Acciones Rápidas -->
+        <div class="sidebar-card">
+          <h4 class="sidebar-title">
+            <i class="fas fa-bolt"></i>
+            Acciones Rápidas
+          </h4>
+          
+          <div class="quick-actions">
+            <button class="quick-action" (click)="descargarHistorialCompleto()">
+              <i class="fas fa-download"></i>
+              Descargar Historial Completo
+            </button>
+            <button class="quick-action" (click)="compartirConMedico()">
+              <i class="fas fa-share-medical"></i>
+              Compartir con Médico
+            </button>
+            <button class="quick-action" (click)="solicitarNuevoExamen()">
+              <i class="fas fa-plus"></i>
+              Solicitar Nuevo Examen
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Detalles -->
+    <div *ngIf="resultadoSeleccionado" class="modal-overlay" (click)="cerrarModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Detalles del Resultado</h3>
+          <button class="modal-close" (click)="cerrarModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Contenido del modal con detalles completos del resultado -->
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

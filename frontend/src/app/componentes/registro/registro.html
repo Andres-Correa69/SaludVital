@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro - Salud Vital</title>
+  <link rel="stylesheet" href="registro.css">
+</head>
+<body>
+    
+    <main class="register-container" id="registerContainer">
+      <!-- Sección del formulario -->
+      <div class="register-form">
+        <h1 class="register-title">Registrarse en Salud Vital</h1>
+        <p class="register-subtitle">Crea tu cuenta para acceder a nuestros servicios</p>
+        
+        <!-- Mensaje de Error -->
+        <div *ngIf="showError" class="error-alert">
+          <p>{{ errorMessage }}</p>
+        </div>
+
+        <!-- Mensaje de Éxito -->
+        <div *ngIf="showSuccess" class="success-alert">
+          <p>{{ successMessage }}</p>
+        </div>
+
+        <form (ngSubmit)="onRegister()" #registerForm="ngForm">
+          <!-- Información Personal -->
+          <div class="form-section">
+            <h3 class="section-title">Información Personal</h3>
+            
+            <div class="input-group">
+              <input 
+                type="text" 
+                id="nombre" 
+                name="nombre" 
+                required 
+                [(ngModel)]="nombre"
+                (input)="onInputChange()"
+                placeholder=" "
+                [class.invalid]="nombre && !validateName()"
+                [disabled]="isLoading">
+              <label for="nombre">Nombre Completo</label>
+              <div *ngIf="nombre && !validateName()" class="validation-hint">
+                Mínimo 2 caracteres
+              </div>
+            </div>
+
+            <div class="input-group">
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                required 
+                [(ngModel)]="email"
+                (input)="onInputChange()"
+                placeholder=" "
+                [class.invalid]="email && !validateEmail()"
+                [disabled]="isLoading">
+              <label for="email">Correo Electrónico</label>
+              <div *ngIf="email && !validateEmail()" class="validation-hint">
+                Formato de email inválido
+              </div>
+            </div>
+          </div>
+
+          <!-- Información de Cuenta -->
+          <div class="form-section">
+            <h3 class="section-title">Información de Cuenta</h3>
+            
+            <div class="input-row">
+              <div class="input-group">
+                <input 
+                  type="password" 
+                  id="contrasena" 
+                  name="contrasena" 
+                  required 
+                  [(ngModel)]="contrasena"
+                  (input)="onInputChange()"
+                  placeholder=" "
+                  [class.invalid]="contrasena && !validatePassword()"
+                  [disabled]="isLoading">
+                <label for="contrasena">Contraseña</label>
+                <div *ngIf="contrasena && !validatePassword()" class="validation-hint">
+                  Mínimo 8 caracteres, 1 mayúscula, 1 número
+                </div>
+              </div>
+
+              <div class="input-group">
+                <input 
+                  type="password" 
+                  id="confirmarContrasena" 
+                  name="confirmarContrasena" 
+                  required 
+                  [(ngModel)]="confirmarContrasena"
+                  (input)="onInputChange()"
+                  placeholder=" "
+                  [class.invalid]="confirmarContrasena && !validatePasswordMatch()"
+                  [disabled]="isLoading">
+                <label for="confirmarContrasena">Confirmar Contraseña</label>
+                <div *ngIf="confirmarContrasena && !validatePasswordMatch()" class="validation-hint">
+                  Las contraseñas no coinciden
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Términos y Condiciones -->
+          <div class="terms-section">
+            <div class="checkbox-group">
+              <input 
+                type="checkbox" 
+                id="aceptoTerminos" 
+                name="aceptoTerminos" 
+                required 
+                [(ngModel)]="aceptoTerminos"
+                [disabled]="isLoading">
+              <label for="aceptoTerminos">
+                Acepto los <a href="#" (click)="openTerms($event)">Términos y Condiciones</a> y la 
+                <a href="#" (click)="openPrivacy($event)">Política de Privacidad</a>
+              </label>
+            </div>
+          </div>
+  
+          <button 
+            type="submit" 
+            [disabled]="!isFormValid()"
+            [class.loading]="isLoading">
+            <span *ngIf="!isLoading">Registrarse</span>
+            <span *ngIf="isLoading">Creando cuenta...</span>
+            <div class="particle-effect">
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+                <div class="particle"></div>
+            </div>
+          </button>
+        </form>
+
+        <!-- Loading Overlay -->
+        <div *ngIf="isLoading" class="loading-overlay">
+          <div class="loading-spinner"></div>
+          <p>Creando tu cuenta...</p>
+        </div>
+
+        <!-- Enlace para login -->
+        <div class="login-link">
+          ¿Ya tienes cuenta? 
+          <a href="#" (click)="goToLogin($event)">
+            Inicia sesión aquí
+            <span class="link-icon">→</span>
+            <div class="link-particles">
+                <div class="link-particle"></div>
+                <div class="link-particle"></div>
+                <div class="link-particle"></div>
+                <div class="link-particle"></div>
+            </div>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Sección del logo con fondo azul -->
+      <div class="logo-section">
+        <div class="logo-wrapper">
+          <img src="assets/logo-salud-vital.png" alt="Logo Salud Vital" class="logo">
+        </div>
+        <div class="welcome-text">
+          <h2>Salud Vital</h2>
+          <p>Tu salud, nuestra prioridad</p>
+        </div>
+      </div>
+    </main>
+    
+    <footer>
+      © 2025 Salud Vital - Todos los derechos reservados.
+    </footer>
+</body>
+</html>

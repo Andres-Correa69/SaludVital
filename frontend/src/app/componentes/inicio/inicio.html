@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio - Salud Vital</title>
+  <link rel="stylesheet" href="inicio.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <app-navbar></app-navbar>
+
+  <!-- Contenido Principal -->
+  <main class="inicio-container">
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <div class="hero-text">
+          <h1 class="hero-title">
+            Bienvenido a 
+            <span class="gradient-text">Salud Vital</span>
+          </h1>
+          <p class="hero-subtitle">
+            Tu salud, nuestra prioridad. Gestiona tus citas médicas y resultados 
+            de forma sencilla y segura.
+          </p>
+          <div class="hero-actions">
+            <button class="btn-primary" (click)="irAAgendarCita()">
+              <i class="fas fa-calendar-plus"></i>
+              Agendar Cita
+              <div class="button-particles">
+                <div class="button-particle"></div>
+                <div class="button-particle"></div>
+                <div class="button-particle"></div>
+              </div>
+            </button>
+            <button class="btn-secondary" (click)="irAResultados()">
+              <i class="fas fa-file-medical"></i>
+              Ver Resultados
+            </button>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="floating-cards">
+            <div class="card medical-card">
+              <i class="fas fa-heartbeat"></i>
+              <span>Citas Médicas</span>
+            </div>
+            <div class="card results-card">
+              <i class="fas fa-chart-line"></i>
+              <span>Resultados</span>
+            </div>
+            <div class="card alert-card">
+              <i class="fas fa-bell"></i>
+              <span>Alertas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+      <div class="section-header">
+        <h2>¿Qué puedes hacer en VitalApp?</h2>
+        <p>Descubre todas las funcionalidades diseñadas para tu bienestar</p>
+      </div>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-calendar-check"></i>
+          </div>
+          <h3>Agendar Citas</h3>
+          <p>Programa tus consultas médicas de forma rápida y sencilla</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-file-medical-alt"></i>
+          </div>
+          <h3>Resultados en Línea</h3>
+          <p>Consulta tus exámenes y resultados médicos cuando lo necesites</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-bell"></i>
+          </div>
+          <h3>Alertas Personalizadas</h3>
+          <p>Recibe recordatorios y alertas de salud importantes</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-user-md"></i>
+          </div>
+          <h3>Historial Médico</h3>
+          <p>Accede a tu historial médico completo en un solo lugar</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+      <div class="stats-container">
+        <div class="stat-item">
+          <div class="stat-number">500+</div>
+          <div class="stat-label">Pacientes Activos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">50+</div>
+          <div class="stat-label">Especialistas</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">24/7</div>
+          <div class="stat-label">Disponibilidad</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">99%</div>
+          <div class="stat-label">Satisfacción</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <div class="cta-content">
+        <h2>¿Listo para cuidar de tu salud?</h2>
+        <p>Comienza hoy mismo a gestionar tu bienestar con VitalApp</p>
+        <button class="btn-cta" (click)="irAAgendarCita()">
+          Comenzar Ahora
+          <i class="fas fa-arrow-right"></i>
+          <div class="button-particles">
+            <div class="button-particle"></div>
+            <div class="button-particle"></div>
+            <div class="button-particle"></div>
+          </div>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-content">
+      <div class="footer-logo">
+        <img src="assets/logo-salud-vital.png" alt="Salud Vital" class="footer-logo-img">
+        <span class="footer-logo-text">Salud Vital</span>
+      </div>
+      <div class="footer-info">
+        <p>&copy; 2025 Salud Vital. Todos los derechos reservados.</p>
+        <p>Tu salud, nuestra prioridad.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

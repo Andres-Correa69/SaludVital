@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navbar - Salud Vital</title>
+  <link rel="stylesheet" href="navbar.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <!-- Logo -->
+      <div class="nav-logo">
+        <img src="assets/logo-salud-vital.png" alt="Salud Vital" class="logo-img">
+        <span class="logo-text">Salud Vital</span>
+      </div>
+
+      <!-- Menú de navegación -->
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAAgendarCita()"
+                  [class.active]="seccionActiva === 'agendar'">
+            <i class="fas fa-calendar-plus"></i>
+            <span>Agendar Cita</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAListaCitas()"
+                  [class.active]="seccionActiva === 'citas'">
+            <i class="fas fa-list-alt"></i>
+            <span>Lista Citas</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAResultados()"
+                  [class.active]="seccionActiva === 'resultados'">
+            <i class="fas fa-file-medical"></i>
+            <span>Resultados Médicos</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAPerfil()"
+                  [class.active]="seccionActiva === 'perfil'">
+            <i class="fas fa-user-circle"></i>
+            <span>Perfil</span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Menú de usuario -->
+      <div class="nav-user">
+        <div class="user-info">
+          <span class="user-name">Bienvenido, {{nombreUsuario}}</span>
+        </div>
+        <button class="logout-btn" (click)="salir()" title="Cerrar sesión">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Salir</span>
+          <div class="button-particles">
+            <div class="button-particle"></div>
+            <div class="button-particle"></div>
+            <div class="button-particle"></div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </nav>
+</body>
+</html>

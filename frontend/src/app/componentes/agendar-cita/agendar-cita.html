@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendar Cita - Salud Vital</title>
+  <link rel="stylesheet" href="agendar-cita.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <app-navbar></app-navbar>
+
+  <!-- Contenido Principal -->
+  <main class="agendar-container">
+    <!-- Header -->
+    <div class="agendar-header">
+      <h1 class="page-title">
+        <i class="fas fa-calendar-plus"></i>
+        Agendar Cita Médica
+      </h1>
+      <p class="page-subtitle">Programa tu consulta médica de forma rápida y sencilla</p>
+    </div>
+
+    <!-- Formulario de Agendamiento -->
+    <div class="agendar-content">
+      <div class="form-container">
+        <form class="agendar-form" (ngSubmit)="onSubmit()" #citaForm="ngForm">
+          
+          <!-- Información Personal -->
+          <div class="form-section">
+            <h3 class="section-title">
+              <i class="fas fa-user"></i>
+              Información Personal
+            </h3>
+            
+            <div class="input-row">
+              <div class="input-group">
+                <input 
+                  type="text" 
+                  id="nombre" 
+                  name="nombre" 
+                  required 
+                  [(ngModel)]="citaData.nombre"
+                  placeholder=" "
+                  [class.invalid]="citaData.nombre && !validarNombre()">
+                <label for="nombre">Nombre Completo</label>
+                <div *ngIf="citaData.nombre && !validarNombre()" class="validation-hint">
+                  Mínimo 2 caracteres
+                </div>
+              </div>
+
+              <div class="input-group">
+                <input 
+                  type="email" 
+                  id="email" 
+                  name="email" 
+                  required 
+                  [(ngModel)]="citaData.email"
+                  placeholder=" "
+                  [class.invalid]="citaData.email && !validarEmail()">
+                <label for="email">Correo Electrónico</label>
+                <div *ngIf="citaData.email && !validarEmail()" class="validation-hint">
+                  Formato de email inválido
+                </div>
+              </div>
+            </div>
+
+            <div class="input-row">
+              <div class="input-group">
+                <input 
+                  type="tel" 
+                  id="telefono" 
+                  name="telefono" 
+                  required 
+                  [(ngModel)]="citaData.telefono"
+                  placeholder=" "
+                  [class.invalid]="citaData.telefono && !validarTelefono()">
+                <label for="telefono">Teléfono</label>
+                <div *ngIf="citaData.telefono && !validarTelefono()" class="validation-hint">
+                  Formato de teléfono inválido
+                </div>
+              </div>
+
+              <div class="input-group">
+                <input 
+                  type="number" 
+                  id="edad" 
+                  name="edad" 
+                  required 
+                  [(ngModel)]="citaData.edad"
+                  placeholder=" "
+                  min="1"
+                  max="120"
+                  [class.invalid]="citaData.edad && !validarEdad()">
+                <label for="edad">Edad</label>
+                <div *ngIf="citaData.edad && !validarEdad()" class="validation-hint">
+                  Edad debe ser entre 1 y 120 años
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Información de la Cita -->
+          <div class="form-section">
+            <h3 class="section-title">
+              <i class="fas fa-calendar-alt"></i>
+              Información de la Cita
+            </h3>
+            
+            <div class="input-row">
+              <div class="input-group">
+                <select 
+                  id="especialidad" 
+                  name="especialidad" 
+                  required 
+                  [(ngModel)]="citaData.especialidad"
+                  [class.invalid]="citaData.especialidad && !validarEspecialidad()">
+                  <option value="">Seleccione especialidad</option>
+                  <option value="medicina-general">Medicina General</option>
+                  <option value="pediatria">Pediatría</option>
+                  <option value="cardiologia">Cardiología</option>
+                  <option value="dermatologia">Dermatología</option>
+                  <option value="ginecologia">Ginecología</option>
+                  <option value="oftalmologia">Oftalmología</option>
+                  <option value="ortopedia">Ortopedia</option>
+                  <option value="odontologia">Odontología</option>
+                </select>
+                <label for="especialidad">Especialidad Médica</label>
+                <div *ngIf="citaData.especialidad && !validarEspecialidad()" class="validation-hint">
+                  Seleccione una especialidad
+                </div>
+              </div>
+
+              <div class="input-group">
+                <select 
+                  id="medico" 
+                  name="medico" 
+                  required 
+                  [(ngModel)]="citaData.medico"
+                  [class.invalid]="citaData.medico && !validarMedico()">
+                  <option value="">Seleccione médico</option>
+                  <option *ngFor="let medico of medicosDisponibles" [value]="medico.id">
+                    {{medico.nombre}} - {{medico.especialidad}}
+                  </option>
+                </select>
+                <label for="medico">Médico</label>
+                <div *ngIf="citaData.medico && !validarMedico()" class="validation-hint">
+                  Seleccione un médico
+                </div>
+              </div>
+            </div>
+
+            <div class="input-row">
+              <div class="input-group">
+                <input 
+                  type="date" 
+                  id="fecha" 
+                  name="fecha" 
+                  required 
+                  [(ngModel)]="citaData.fecha"
+                  [min]="fechaMinima"
+                  [max]="fechaMaxima"
+                  [class.invalid]="citaData.fecha && !validarFecha()">
+                <label for="fecha">Fecha de la Cita</label>
+                <div *ngIf="citaData.fecha && !validarFecha()" class="validation-hint">
+                  Fecha inválida
+                </div>
+              </div>
+
+              <div class="input-group">
+                <select 
+                  id="hora" 
+                  name="hora" 
+                  required 
+                  [(ngModel)]="citaData.hora"
+                  [class.invalid]="citaData.hora && !validarHora()">
+                  <option value="">Seleccione hora</option>
+                  <option *ngFor="let hora of horariosDisponibles" [value]="hora">
+                    {{hora}}
+                  </option>
+                </select>
+                <label for="hora">Hora de la Cita</label>
+                <div *ngIf="citaData.hora && !validarHora()" class="validation-hint">
+                  Seleccione una hora
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Motivo de la Consulta -->
+          <div class="form-section">
+            <h3 class="section-title">
+              <i class="fas fa-stethoscope"></i>
+              Motivo de la Consulta
+            </h3>
+            
+            <div class="input-group full-width">
+              <textarea 
+                id="motivo" 
+                name="motivo" 
+                rows="4" 
+                required 
+                [(ngModel)]="citaData.motivo"
+                placeholder=" "
+                [class.invalid]="citaData.motivo && !validarMotivo()"></textarea>
+              <label for="motivo">Describa el motivo de su consulta</label>
+              <div *ngIf="citaData.motivo && !validarMotivo()" class="validation-hint">
+                Mínimo 10 caracteres
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="form-actions">
+            <button 
+              type="button" 
+              class="btn-secondary" 
+              (click)="limpiarFormulario()">
+              <i class="fas fa-times"></i>
+              Cancelar
+            </button>
+            
+            <button 
+              type="submit" 
+              class="btn-primary"
+              [disabled]="!formularioValido() || isLoading">
+              <i class="fas fa-calendar-check"></i>
+              {{isLoading ? 'Agendando...' : 'Confirmar Cita'}}
+              <div class="button-particles">
+                <div class="button-particle"></div>
+                <div class="button-particle"></div>
+                <div class="button-particle"></div>
+              </div>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel de Resumen -->
+      <div class="summary-panel">
+        <div class="summary-card">
+          <h3 class="summary-title">
+            <i class="fas fa-clipboard-list"></i>
+            Resumen de Cita
+          </h3>
+          
+          <div class="summary-content" *ngIf="citaData.nombre; else emptyState">
+            <div class="summary-item">
+              <span class="summary-label">Paciente:</span>
+              <span class="summary-value">{{citaData.nombre}}</span>
+            </div>
+            
+            <div class="summary-item">
+              <span class="summary-label">Especialidad:</span>
+              <span class="summary-value">{{obtenerNombreEspecialidad(citaData.especialidad)}}</span>
+            </div>
+            
+            <div class="summary-item">
+              <span class="summary-label">Médico:</span>
+              <span class="summary-value">{{obtenerNombreMedico(citaData.medico)}}</span>
+            </div>
+            
+            <div class="summary-item">
+              <span class="summary-label">Fecha:</span>
+              <span class="summary-value">{{formatearFecha(citaData.fecha)}}</span>
+            </div>
+            
+            <div class="summary-item">
+              <span class="summary-label">Hora:</span>
+              <span class="summary-value">{{citaData.hora}}</span>
+            </div>
+            
+            <div class="summary-divider"></div>
+            
+            <div class="summary-nota">
+              <i class="fas fa-info-circle"></i>
+              <p>Revise cuidadosamente la información antes de confirmar la cita.</p>
+            </div>
+          </div>
+
+          <ng-template #emptyState>
+            <div class="empty-state">
+              <i class="fas fa-calendar-plus"></i>
+              <p>Complete el formulario para ver el resumen de su cita</p>
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- Información Importante -->
+        <div class="info-card">
+          <h4><i class="fas fa-exclamation-circle"></i> Información Importante</h4>
+          <ul class="info-list">
+            <li><i class="fas fa-clock"></i> Llegue 15 minutos antes de su cita</li>
+            <li><i class="fas fa-id-card"></i> Traer documento de identificación</li>
+            <li><i class="fas fa-file-medical"></i> Traer exámenes anteriores si los tiene</li>
+            <li><i class="fas fa-ban"></i> Cancelar con 24 horas de anticipación</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div *ngIf="isLoading" class="loading-overlay">
+      <div class="loading-spinner"></div>
+      <p>Procesando su cita...</p>
+    </div>
+  </main>
+</body>
+</html>
