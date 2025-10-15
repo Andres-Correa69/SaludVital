@@ -13,6 +13,7 @@
 
   <!-- Contenido Principal -->
   <main class="citas-container">
+    
     <!-- Header -->
     <div class="citas-header">
       <h1 class="page-title">
@@ -22,7 +23,7 @@
       <p class="page-subtitle">Gestiona y revisa todas tus citas programadas</p>
       
       <div class="header-actions">
-        <button class="btn-primary" (click)="irAAgendarCita()">
+        <button class="btn-primary" (click)="irAAgendarCita()" (click)="crearEfectoParticulas($event)">
           <i class="fas fa-plus"></i>
           Nueva Cita
           <div class="button-particles">
@@ -30,6 +31,11 @@
             <div class="button-particle"></div>
             <div class="button-particle"></div>
           </div>
+        </button>
+
+        <button class="btn-secondary" (click)="recargarCitas()" [disabled]="isLoading">
+          <i class="fas fa-sync-alt" [class.fa-spin]="isLoading"></i>
+          {{isLoading ? 'Cargando...' : 'Actualizar'}}
         </button>
         
         <div class="filter-controls">
@@ -44,8 +50,20 @@
       </div>
     </div>
 
+    <!-- Mensaje de error -->
+    <div *ngIf="errorMessage" class="error-alert">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{errorMessage}}
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Cargando tus citas...</p>
+    </div>
+
     <!-- Estadísticas Rápidas -->
-    <div class="stats-cards">
+    <div class="stats-cards" *ngIf="!isLoading && citas.length > 0">
       <div class="stat-card">
         <div class="stat-icon pending">
           <i class="fas fa-clock"></i>
@@ -88,7 +106,7 @@
     </div>
 
     <!-- Lista de Citas -->
-    <div class="citas-content">
+    <div class="citas-content" *ngIf="!isLoading">
       <div class="citas-list">
         <!-- Citas Próximas -->
         <div class="citas-section" *ngIf="citasProximas.length > 0">
@@ -129,33 +147,20 @@
                   </div>
                   
                   <div class="info-item">
-                    <i class="fas fa-stethoscope"></i>
-                    <div class="info-content">
-                      <span class="info-label">Especialidad</span>
-                      <span class="info-value">{{cita.especialidad}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
                     <i class="fas fa-calendar"></i>
                     <div class="info-content">
                       <span class="info-label">Fecha y Hora</span>
-                      <span class="info-value">{{formatearFechaHora(cita.fecha, cita.hora)}}</span>
+                      <span class="info-value">{{formatearFechaHora(cita.fecha)}}</span>
                     </div>
                   </div>
                   
                   <div class="info-item">
-                    <i class="fas fa-map-marker-alt"></i>
+                    <i class="fas fa-stethoscope"></i>
                     <div class="info-content">
-                      <span class="info-label">Ubicación</span>
-                      <span class="info-value">{{cita.ubicacion}}</span>
+                      <span class="info-label">Motivo</span>
+                      <span class="info-value">{{cita.motivo}}</span>
                     </div>
                   </div>
-                </div>
-                
-                <div class="cita-motivo">
-                  <span class="motivo-label">Motivo:</span>
-                  <p class="motivo-text">{{cita.motivo}}</p>
                 </div>
               </div>
               
@@ -202,14 +207,6 @@
                   </div>
                   
                   <div class="info-item">
-                    <i class="fas fa-stethoscope"></i>
-                    <div class="info-content">
-                      <span class="info-label">Especialidad</span>
-                      <span class="info-value">{{cita.especialidad}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
                     <i class="fas fa-calendar"></i>
                     <div class="info-content">
                       <span class="info-label">Fecha</span>
@@ -217,18 +214,13 @@
                     </div>
                   </div>
                   
-                  <div class="info-item" *ngIf="cita.diagnostico">
-                    <i class="fas fa-file-medical"></i>
+                  <div class="info-item">
+                    <i class="fas fa-stethoscope"></i>
                     <div class="info-content">
-                      <span class="info-label">Diagnóstico</span>
-                      <span class="info-value">{{cita.diagnostico}}</span>
+                      <span class="info-label">Motivo</span>
+                      <span class="info-value">{{cita.motivo}}</span>
                     </div>
                   </div>
-                </div>
-                
-                <div class="cita-notes" *ngIf="cita.notas">
-                  <span class="notes-label">Notas:</span>
-                  <p class="notes-text">{{cita.notas}}</p>
                 </div>
               </div>
             </div>
@@ -236,21 +228,39 @@
         </div>
 
         <!-- Estado vacío -->
-        <div class="empty-state" *ngIf="citasFiltradas.length === 0">
+        <div class="empty-state" *ngIf="citas.length === 0 && !isLoading">
           <div class="empty-icon">
             <i class="fas fa-calendar-times"></i>
           </div>
-          <h3>No hay citas {{getMensajeEstadoVacio()}}</h3>
+          <h3>No hay citas programadas</h3>
           <p>Parece que no tienes citas médicas programadas en este momento.</p>
-          <button class="btn-primary" (click)="irAAgendarCita()">
+          <button class="btn-primary" (click)="irAAgendarCita()" (click)="crearEfectoParticulas($event)">
             <i class="fas fa-plus"></i>
             Agendar Primera Cita
+            <div class="button-particles">
+              <div class="button-particle"></div>
+              <div class="button-particle"></div>
+              <div class="button-particle"></div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Estado vacío con filtro -->
+        <div class="empty-state" *ngIf="citas.length > 0 && citasFiltradas.length === 0 && !isLoading">
+          <div class="empty-icon">
+            <i class="fas fa-search"></i>
+          </div>
+          <h3>No hay citas {{getMensajeEstadoVacio()}}</h3>
+          <p>No se encontraron citas con el filtro aplicado.</p>
+          <button class="btn-secondary" (click)="filtroEstado = 'todas'; filtrarCitas()">
+            <i class="fas fa-times"></i>
+            Limpiar Filtro
           </button>
         </div>
       </div>
 
       <!-- Panel Lateral -->
-      <div class="sidebar">
+      <div class="sidebar" *ngIf="!isLoading && citas.length > 0">
         <!-- Próxima Cita -->
         <div class="sidebar-card" *ngIf="proximaCita">
           <h4 class="sidebar-title">
@@ -265,9 +275,9 @@
                 <span class="month">{{getMes(proximaCita.fecha)}}</span>
               </div>
               <div class="appointment-info">
-                <div class="appointment-time">{{proximaCita.hora}}</div>
+                <div class="appointment-time">{{getHora(proximaCita.fecha)}}</div>
                 <div class="appointment-doctor">{{proximaCita.medico}}</div>
-                <div class="appointment-specialty">{{proximaCita.especialidad}}</div>
+                <div class="appointment-specialty">{{proximaCita.motivo}}</div>
               </div>
             </div>
             
@@ -329,17 +339,176 @@
       </div>
     </div>
 
-    <!-- Modal de Detalles -->
-    <div *ngIf="citaSeleccionada" class="modal-overlay" (click)="cerrarModal()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
+    <!-- Modal de Detalles de Cita -->
+    <div *ngIf="mostrarModalDetalles && citaSeleccionada" class="modal-overlay">
+      <div class="modal-container">
         <div class="modal-header">
           <h3>Detalles de la Cita</h3>
-          <button class="modal-close" (click)="cerrarModal()">
+          <button (click)="cerrarModalDetalles()" class="btn-close">
             <i class="fas fa-times"></i>
           </button>
         </div>
+        
         <div class="modal-body">
-          <!-- Contenido del modal con detalles completos de la cita -->
+          <div class="detalles-cita">
+            <div class="detalle-header">
+              <div class="cita-estado-modal" [class]="'status-' + citaSeleccionada.estado">
+                <i class="fas" [class]="getEstadoIcon(citaSeleccionada.estado)"></i>
+                {{getEstadoTexto(citaSeleccionada.estado)}}
+              </div>
+            </div>
+            
+            <div class="detalles-grid">
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-user-md"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Médico</span>
+                  <span class="detalle-valor">{{citaSeleccionada.medico}}</span>
+                </div>
+              </div>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-calendar"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Fecha y Hora</span>
+                  <span class="detalle-valor">{{formatearFechaHora(citaSeleccionada.fecha)}}</span>
+                </div>
+              </div>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-stethoscope"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Motivo de Consulta</span>
+                  <span class="detalle-valor">{{citaSeleccionada.motivo}}</span>
+                </div>
+              </div>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-user"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Paciente</span>
+                  <span class="detalle-valor">{{citaSeleccionada.paciente.user?.nombre}}</span>
+                </div>
+              </div>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-id-card"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Documento</span>
+                  <span class="detalle-valor">{{citaSeleccionada.paciente.documento}}</span>
+                </div>
+              </div>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-clock"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Fecha de Creación</span>
+                  <span class="detalle-valor">{{formatearFechaHora(citaSeleccionada.createdAt)}}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="detalle-actions">
+              <button class="btn-secondary" (click)="cerrarModalDetalles()">
+                Cerrar
+              </button>
+              <button 
+                class="btn-primary" 
+                (click)="editarCita(citaSeleccionada)" 
+                *ngIf="citaSeleccionada.estado === 'pendiente'">
+                <i class="fas fa-edit"></i>
+                Editar Cita
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Edición de Cita -->
+    <div *ngIf="mostrarModalEdicion && citaSeleccionada" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>Editar Cita</h3>
+          <button (click)="cancelarEdicion()" class="btn-close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <form (ngSubmit)="guardarEdicion()" class="edit-form">
+            <div class="form-group">
+              <label>Médico *</label>
+              <input 
+                type="text" 
+                [value]="citaEditada.medico" 
+                name="medico"
+                class="form-input disabled"
+                disabled
+                placeholder="Nombre del médico">
+              <small class="field-note">El médico no se puede modificar una vez asignado</small>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fecha *</label>
+                <input 
+                  type="date" 
+                  [(ngModel)]="citaEditada.fecha" 
+                  name="fecha"
+                  required
+                  class="form-input"
+                  [min]="fechaMinima">
+              </div>
+              
+              <div class="form-group">
+                <label>Hora *</label>
+                <select 
+                  [(ngModel)]="citaEditada.hora" 
+                  name="hora"
+                  required
+                  class="form-input">
+                  <option value="">Seleccione hora</option>
+                  <option *ngFor="let hora of horariosDisponibles" [value]="hora">
+                    {{hora}}
+                  </option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Motivo de Consulta *</label>
+              <textarea 
+                [(ngModel)]="citaEditada.motivo" 
+                name="motivo"
+                required
+                rows="4"
+                class="form-input"
+                placeholder="Describa el motivo de la consulta"></textarea>
+            </div>
+            
+            <div class="form-actions">
+              <button type="button" (click)="cancelarEdicion()" class="btn-secondary">
+                Cancelar
+              </button>
+              <button type="submit" class="btn-primary" [disabled]="!formularioEdicionValido()">
+                <i class="fas fa-save"></i>
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registro - Salud Vital</title>
   <link rel="stylesheet" href="registro.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     
@@ -16,18 +17,23 @@
         
         <!-- Mensaje de Error -->
         <div *ngIf="showError" class="error-alert">
+          <i class="fas fa-exclamation-triangle"></i>
           <p>{{ errorMessage }}</p>
         </div>
 
         <!-- Mensaje de Éxito -->
         <div *ngIf="showSuccess" class="success-alert">
+          <i class="fas fa-check-circle"></i>
           <p>{{ successMessage }}</p>
         </div>
 
         <form (ngSubmit)="onRegister()" #registerForm="ngForm">
           <!-- Información Personal -->
           <div class="form-section">
-            <h3 class="section-title">Información Personal</h3>
+            <h3 class="section-title">
+              <i class="fas fa-user"></i>
+              Información Personal
+            </h3>
             
             <div class="input-group">
               <input 
@@ -38,10 +44,11 @@
                 [(ngModel)]="nombre"
                 (input)="onInputChange()"
                 placeholder=" "
-                [class.invalid]="nombre && !validateName()"
+                [class.invalid]="nombre && !validateNombre()"
                 [disabled]="isLoading">
               <label for="nombre">Nombre Completo</label>
-              <div *ngIf="nombre && !validateName()" class="validation-hint">
+              <div *ngIf="nombre && !validateNombre()" class="validation-hint">
+                <i class="fas fa-exclamation-circle"></i>
                 Mínimo 2 caracteres
               </div>
             </div>
@@ -59,75 +66,151 @@
                 [disabled]="isLoading">
               <label for="email">Correo Electrónico</label>
               <div *ngIf="email && !validateEmail()" class="validation-hint">
+                <i class="fas fa-exclamation-circle"></i>
                 Formato de email inválido
+              </div>
+            </div>
+          </div>
+
+          <!-- Selección de Rol -->
+          <div class="form-section">
+            <h3 class="section-title">
+              <i class="fas fa-user-tag"></i>
+              Tipo de Usuario
+            </h3>
+            
+            <div class="role-selection">
+              <div class="role-option" 
+                   [class.selected]="rol === 'paciente'"
+                   (click)="selectRole('paciente')"
+                   [class.disabled]="isLoading">
+                <div class="role-icon">
+                  <i class="fas fa-user-injured"></i>
+                </div>
+                <div class="role-info">
+                  <h4>Paciente</h4>
+                  <p>Buscar médicos, agendar citas y gestionar tu salud</p>
+                </div>
+                <div class="role-check">
+                  <i class="fas fa-check"></i>
+                </div>
+              </div>
+
+              <div class="role-option" 
+                   [class.selected]="rol === 'medico'"
+                   (click)="selectRole('medico')"
+                   [class.disabled]="isLoading">
+                <div class="role-icon">
+                  <i class="fas fa-user-md"></i>
+                </div>
+                <div class="role-info">
+                  <h4>Médico</h4>
+                  <p>Atender pacientes, gestionar citas y expedientes médicos</p>
+                </div>
+                <div class="role-check">
+                  <i class="fas fa-check"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Información adicional según el rol seleccionado -->
+            <div *ngIf="rol === 'medico'" class="role-additional-info">
+              <div class="info-card">
+                <i class="fas fa-info-circle"></i>
+                <p>Como médico, podrás crear tu perfil profesional después del registro</p>
               </div>
             </div>
           </div>
 
           <!-- Información de Cuenta -->
           <div class="form-section">
-            <h3 class="section-title">Información de Cuenta</h3>
+            <h3 class="section-title">
+              <i class="fas fa-lock"></i>
+              Información de Cuenta
+            </h3>
             
             <div class="input-row">
               <div class="input-group">
                 <input 
                   type="password" 
-                  id="contrasena" 
-                  name="contrasena" 
+                  id="password" 
+                  name="password" 
                   required 
-                  [(ngModel)]="contrasena"
+                  [(ngModel)]="password"
                   (input)="onInputChange()"
                   placeholder=" "
-                  [class.invalid]="contrasena && !validatePassword()"
+                  [class.invalid]="password && !validatePassword()"
                   [disabled]="isLoading">
-                <label for="contrasena">Contraseña</label>
-                <div *ngIf="contrasena && !validatePassword()" class="validation-hint">
-                  Mínimo 8 caracteres, 1 mayúscula, 1 número
+                <label for="password">Contraseña</label>
+                <div *ngIf="password && !validatePassword()" class="validation-hint">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Mínimo 6 caracteres
                 </div>
               </div>
 
               <div class="input-group">
                 <input 
                   type="password" 
-                  id="confirmarContrasena" 
-                  name="confirmarContrasena" 
+                  id="confirmarPassword" 
+                  name="confirmarPassword" 
                   required 
-                  [(ngModel)]="confirmarContrasena"
+                  [(ngModel)]="confirmarPassword"
                   (input)="onInputChange()"
                   placeholder=" "
-                  [class.invalid]="confirmarContrasena && !validatePasswordMatch()"
+                  [class.invalid]="confirmarPassword && !validatePasswordMatch()"
                   [disabled]="isLoading">
-                <label for="confirmarContrasena">Confirmar Contraseña</label>
-                <div *ngIf="confirmarContrasena && !validatePasswordMatch()" class="validation-hint">
+                <label for="confirmarPassword">Confirmar Contraseña</label>
+                <div *ngIf="confirmarPassword && !validatePasswordMatch()" class="validation-hint">
+                  <i class="fas fa-exclamation-circle"></i>
                   Las contraseñas no coinciden
                 </div>
               </div>
             </div>
+
+            <!-- Indicador de fortaleza de contraseña -->
+            <div *ngIf="password" class="password-strength">
+              <div class="strength-bar" [class]="getPasswordStrength()">
+                <div class="strength-fill" [style.width]="getPasswordStrengthPercentage() + '%'"></div>
+              </div>
+              <span class="strength-text">{{ getPasswordStrengthText() }}</span>
+            </div>
           </div>
 
           <!-- Términos y Condiciones -->
-          <div class="terms-section">
-            <div class="checkbox-group">
-              <input 
-                type="checkbox" 
-                id="aceptoTerminos" 
-                name="aceptoTerminos" 
-                required 
-                [(ngModel)]="aceptoTerminos"
-                [disabled]="isLoading">
-              <label for="aceptoTerminos">
-                Acepto los <a href="#" (click)="openTerms($event)">Términos y Condiciones</a> y la 
-                <a href="#" (click)="openPrivacy($event)">Política de Privacidad</a>
-              </label>
-            </div>
-          </div>
+<div class="terms-section">
+  <div class="checkbox-group">
+    <input 
+      type="checkbox" 
+      id="aceptoTerminos" 
+      name="aceptoTerminos" 
+      required 
+      [(ngModel)]="aceptoTerminos"
+      [disabled]="isLoading">
+    <label for="aceptoTerminos" class="checkbox-label">
+      <div class="checkbox-custom">
+        <i class="fas fa-check"></i>
+      </div>
+      <span class="checkbox-text">
+        Acepto los <a href="#" (click)="openTerms($event)">Términos y Condiciones</a> y la 
+        <a href="#" (click)="openPrivacy($event)">Política de Privacidad</a>
+      </span>
+    </label>
+  </div>
+</div>
   
           <button 
             type="submit" 
+            class="submit-btn"
             [disabled]="!isFormValid()"
             [class.loading]="isLoading">
-            <span *ngIf="!isLoading">Registrarse</span>
-            <span *ngIf="isLoading">Creando cuenta...</span>
+            <span *ngIf="!isLoading">
+              <i class="fas fa-user-plus"></i>
+              {{ rol === 'medico' ? 'Registrarme como Médico' : 'Registrarme como Paciente' }}
+            </span>
+            <span *ngIf="isLoading">
+              <i class="fas fa-spinner fa-spin"></i>
+              Creando cuenta...
+            </span>
             <div class="particle-effect">
                 <div class="particle"></div>
                 <div class="particle"></div>
@@ -147,7 +230,7 @@
         <!-- Enlace para login -->
         <div class="login-link">
           ¿Ya tienes cuenta? 
-          <a href="#" (click)="goToLogin($event)">
+          <a href="#" (click)="goToLogin($event)" (mouseenter)="createLinkParticles($event)">
             Inicia sesión aquí
             <span class="link-icon">→</span>
             <div class="link-particles">
@@ -168,6 +251,41 @@
         <div class="welcome-text">
           <h2>Salud Vital</h2>
           <p>Tu salud, nuestra prioridad</p>
+        </div>
+
+        <!-- Beneficios según el rol -->
+        <div class="benefits-section">
+          <div *ngIf="rol === 'paciente'" class="benefits-list">
+            <h3>Beneficios para Pacientes</h3>
+            <div class="benefit-item">
+              <i class="fas fa-calendar-check"></i>
+              <span>Agenda citas fácilmente</span>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-file-medical"></i>
+              <span>Accede a tus resultados</span>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-comments"></i>
+              <span>Comunícate con médicos</span>
+            </div>
+          </div>
+
+          <div *ngIf="rol === 'medico'" class="benefits-list">
+            <h3>Beneficios para Médicos</h3>
+            <div class="benefit-item">
+              <i class="fas fa-briefcase-medical"></i>
+              <span>Gestiona tu consultorio</span>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-calendar-alt"></i>
+              <span>Organiza tus citas</span>
+            </div>
+            <div class="benefit-item">
+              <i class="fas fa-chart-line"></i>
+              <span>Accede a estadísticas</span>
+            </div>
+          </div>
         </div>
       </div>
     </main>

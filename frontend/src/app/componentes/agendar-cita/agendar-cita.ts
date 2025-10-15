@@ -1,14 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Navbar } from '../navbar/navbar';
+import { CitaService } from '../../servicios/cita.service';
+import { CitaDto } from '../../modelos/cita.models';
+import { AuthService } from '../../servicios/auth.service';
+import { User } from '../../modelos/auth.models';
 
-interface CitaData {
-  nombre: string;
-  email: string;
-  telefono: string;
-  edad: number | null;
+interface CitaFormData {
   especialidad: string;
   medico: string;
   fecha: string;
@@ -30,11 +30,11 @@ interface Medico {
   styleUrls: ['./agendar-cita.css']
 })
 export class AgendarCita implements OnInit {
-  citaData: CitaData = {
-    nombre: '',
-    email: '',
-    telefono: '',
-    edad: null,
+  private citaService = inject(CitaService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  citaData: CitaFormData = {
     especialidad: '',
     medico: '',
     fecha: '',
@@ -42,6 +42,7 @@ export class AgendarCita implements OnInit {
     motivo: ''
   };
 
+  usuarioActual: User | null = null;
   isLoading: boolean = false;
   
   // Datos de ejemplo
@@ -57,16 +58,16 @@ export class AgendarCita implements OnInit {
   ];
 
   horariosDisponibles: string[] = [
-    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-    '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM',
-    '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM'
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30'
   ];
 
   // Fechas límite
   fechaMinima: string;
   fechaMaxima: string;
 
-  constructor(private router: Router) {
+  constructor() {
     // Fecha mínima: hoy
     const hoy = new Date();
     this.fechaMinima = hoy.toISOString().split('T')[0];
@@ -78,28 +79,19 @@ export class AgendarCita implements OnInit {
   }
 
   ngOnInit() {
-    // Inicializar datos si es necesario
+    // Obtener usuario actual al inicializar
+    this.usuarioActual = this.authService.getCurrentUser();
+    
+    if (!this.usuarioActual) {
+      alert('Error: No se pudo obtener la información del usuario. Por favor inicie sesión nuevamente.');
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    console.log('Usuario actual:', this.usuarioActual);
   }
 
-  // Métodos de validación
-  validarNombre(): boolean {
-    return this.citaData.nombre.trim().length >= 2;
-  }
-
-  validarEmail(): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(this.citaData.email);
-  }
-
-  validarTelefono(): boolean {
-    const telefonoRegex = /^[0-9+\-\s()]{10,}$/;
-    return telefonoRegex.test(this.citaData.telefono);
-  }
-
-  validarEdad(): boolean {
-    return this.citaData.edad !== null && this.citaData.edad >= 1 && this.citaData.edad <= 120;
-  }
-
+  // Métodos de validación (solo los necesarios)
   validarEspecialidad(): boolean {
     return this.citaData.especialidad !== '';
   }
@@ -128,11 +120,7 @@ export class AgendarCita implements OnInit {
   }
 
   formularioValido(): boolean {
-    return this.validarNombre() &&
-           this.validarEmail() &&
-           this.validarTelefono() &&
-           this.validarEdad() &&
-           this.validarEspecialidad() &&
+    return this.validarEspecialidad() &&
            this.validarMedico() &&
            this.validarFecha() &&
            this.validarHora() &&
@@ -171,38 +159,70 @@ export class AgendarCita implements OnInit {
     return new Date(fecha).toLocaleDateString('es-ES', opciones);
   }
 
+  // Crear fecha ISO combinando fecha y hora
+  crearFechaISO(fecha: string, hora: string): string {
+    return `${fecha}T${hora}:00`;
+  }
+
   // Acciones del formulario
   onSubmit(): void {
     if (!this.formularioValido()) {
+      alert('Por favor complete todos los campos correctamente.');
+      return;
+    }
+
+    if (!this.usuarioActual) {
+      alert('Error: No se pudo obtener la información del usuario.');
       return;
     }
 
     this.isLoading = true;
 
-    // Simular procesamiento de la cita
-    setTimeout(() => {
-      this.isLoading = false;
-      
-      // Aquí iría la lógica real para guardar la cita
-      console.log('Cita agendada:', this.citaData);
-      
-      // Mostrar mensaje de éxito y redirigir
-      alert('¡Cita agendada exitosamente! Serás redirigido al inicio.');
-      
-      // Redirigir al inicio después de agendar
-      setTimeout(() => {
-        this.router.navigate(['/inicio']);
-      }, 2000);
-      
-    }, 2000);
+    // Crear el DTO para la cita
+    const citaDto: CitaDto = {
+      paciente: this.usuarioActual.id, // Usar el ID del usuario actual como paciente
+      fecha: this.crearFechaISO(this.citaData.fecha, this.citaData.hora),
+      motivo: this.citaData.motivo,
+      estado: 'pendiente',
+      medico: this.obtenerNombreMedico(this.citaData.medico)
+    };
+
+    console.log('Enviando cita:', citaDto);
+
+    // Llamar al servicio real
+    this.citaService.crearCita(citaDto).subscribe({
+      next: (citaCreada) => {
+        this.isLoading = false;
+        console.log('Cita creada exitosamente:', citaCreada);
+        
+        // Mostrar mensaje de éxito
+        alert('¡Cita agendada exitosamente! Serás redirigido al inicio.');
+        
+        // Redirigir al inicio después de agendar
+        setTimeout(() => {
+          this.router.navigate(['/inicio']);
+        }, 2000);
+      },
+      error: (error) => {
+        this.isLoading = false;
+        console.error('Error al crear cita:', error);
+        
+        // Mostrar mensaje de error específico
+        let mensajeError = 'Error al agendar la cita. Inténtelo de nuevo.';
+        
+        if (error.message?.includes('400')) {
+          mensajeError = 'Datos inválidos. Por favor verifique la información.';
+        } else if (error.message?.includes('401')) {
+          mensajeError = 'No tiene permisos para realizar esta acción.';
+        }
+        
+        alert(mensajeError);
+      }
+    });
   }
 
   limpiarFormulario(): void {
     this.citaData = {
-      nombre: '',
-      email: '',
-      telefono: '',
-      edad: null,
       especialidad: '',
       medico: '',
       fecha: '',

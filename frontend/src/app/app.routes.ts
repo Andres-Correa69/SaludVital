@@ -7,37 +7,61 @@ import { ResultadosMedicos } from './componentes/resultados-medicos/resultados-m
 import { AlertasSalud } from './componentes/alertas-salud/alertas-salud';
 import { Perfil } from './componentes/perfil/perfil';
 import { Registro } from './componentes/registro/registro';
-import { AuthGuard } from './guards/auth.guards';
-
+import { authGuard } from './guards/auth.guards';
+import { MedicoDashboardComponent } from './componentes/medico/medico-dashboard/medico-dashboard';
 
 
 export const routes: Routes = [
-  { path: 'login', component: Login },
+  { 
+    path: 'login', 
+    component: Login 
+  },
+  { 
+    path: 'registro', 
+    component: Registro 
+  },
   { 
     path: 'inicio', 
-    component: Inicio
+    component: Inicio,
+    canActivate: [authGuard]
   },
   { 
     path: 'agendar-cita', 
-    component: AgendarCita
+    component: AgendarCita,
+    canActivate: [authGuard]
   },
   { 
     path: 'lista-citas', 
-    component: ListaCitas
+    component: ListaCitas,
+    canActivate: [authGuard]
   },
   { 
     path: 'resultados-medicos', 
-    component: ResultadosMedicos
+    component: ResultadosMedicos,
+    canActivate: [authGuard]
   },
   { 
     path: 'alertas-salud', 
-    component: AlertasSalud 
+    component: AlertasSalud,
+    canActivate: [authGuard]
   },
   { 
     path: 'perfil', 
-    component: Perfil
+    component: Perfil,
+    canActivate: [authGuard]
   },
-  { path: 'registro', component: Registro },
-  { path: '', redirectTo: '/login', pathMatch: 'full' },
-  { path: '**', redirectTo: '/inicio' }
+  { 
+    path: 'medico', 
+    component: MedicoDashboardComponent,
+    canActivate: [authGuard]
+  },
+  { 
+    path: '', 
+    redirectTo: '/inicio', 
+    pathMatch: 'full'
+  },
+  { 
+    path: '**', 
+    redirectTo: '/inicio'
+  }
 ];

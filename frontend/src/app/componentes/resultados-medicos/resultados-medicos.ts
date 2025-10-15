@@ -1,8 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Navbar } from '../navbar/navbar';
+import { ResultadoService } from '../../servicios/resultado.service';
+import { AuthService } from '../../servicios/auth.service';
+import { Resultado, ResultadoDto, ResultadoFiltros } from '../../modelos/resultado.models';
+import { User } from '../../modelos/auth.models';
 
 interface ValorResultado {
   nombre: string;
@@ -10,19 +14,6 @@ interface ValorResultado {
   unidad: string;
   rangoNormal: string;
   estado: 'normal' | 'anormal';
-}
-
-interface ResultadoMedico {
-  id: string;
-  nombreExamen: string;
-  tipo: 'laboratorio' | 'imagen' | 'especialidad' | 'general';
-  fechaExamen: string;
-  fechaResultado: string;
-  medicoSolicitante: string;
-  laboratorio: string;
-  estado: 'normal' | 'anormal' | 'pendiente';
-  valores?: ValorResultado[];
-  observaciones?: string;
 }
 
 interface Alerta {
@@ -54,76 +45,15 @@ interface Contadores {
   styleUrls: ['./resultados-medicos.css']
 })
 export class ResultadosMedicos implements OnInit {
-  // Datos de ejemplo
-  resultados: ResultadoMedico[] = [
-    {
-      id: '1',
-      nombreExamen: 'Hemograma Completo',
-      tipo: 'laboratorio',
-      fechaExamen: '2024-02-10',
-      fechaResultado: '2024-02-11',
-      medicoSolicitante: 'Dr. Carlos Rodríguez',
-      laboratorio: 'Laboratorio Central',
-      estado: 'normal',
-      valores: [
-        { nombre: 'Hemoglobina', resultado: '14.2', unidad: 'g/dL', rangoNormal: '13.5-17.5', estado: 'normal' },
-        { nombre: 'Leucocitos', resultado: '7.8', unidad: 'x10³/μL', rangoNormal: '4.5-11.0', estado: 'normal' },
-        { nombre: 'Plaquetas', resultado: '250', unidad: 'x10³/μL', rangoNormal: '150-450', estado: 'normal' }
-      ],
-      observaciones: 'Resultados dentro de parámetros normales.'
-    },
-    {
-      id: '2',
-      nombreExamen: 'Perfil Lipídico',
-      tipo: 'laboratorio',
-      fechaExamen: '2024-02-10',
-      fechaResultado: '2024-02-11',
-      medicoSolicitante: 'Dr. Carlos Rodríguez',
-      laboratorio: 'Laboratorio Central',
-      estado: 'anormal',
-      valores: [
-        { nombre: 'Colesterol Total', resultado: '240', unidad: 'mg/dL', rangoNormal: '<200', estado: 'anormal' },
-        { nombre: 'LDL', resultado: '160', unidad: 'mg/dL', rangoNormal: '<100', estado: 'anormal' },
-        { nombre: 'HDL', resultado: '45', unidad: 'mg/dL', rangoNormal: '>40', estado: 'normal' },
-        { nombre: 'Triglicéridos', resultado: '180', unidad: 'mg/dL', rangoNormal: '<150', estado: 'anormal' }
-      ],
-      observaciones: 'Niveles elevados de colesterol y triglicéridos. Se recomienda consulta con especialista.'
-    },
-    {
-      id: '3',
-      nombreExamen: 'Radiografía de Tórax',
-      tipo: 'imagen',
-      fechaExamen: '2024-02-05',
-      fechaResultado: '2024-02-06',
-      medicoSolicitante: 'Dra. Ana Martínez',
-      laboratorio: 'Imagenología Avanzada',
-      estado: 'normal',
-      observaciones: 'Radiografía sin hallazgos patológicos. Campos pulmonares libres.'
-    },
-    {
-      id: '4',
-      nombreExamen: 'Electrocardiograma',
-      tipo: 'especialidad',
-      fechaExamen: '2024-01-20',
-      fechaResultado: '2024-01-20',
-      medicoSolicitante: 'Dr. Miguel Sánchez',
-      laboratorio: 'Cardiología Clínica',
-      estado: 'normal',
-      observaciones: 'Ritmo sinusal normal. Sin alteraciones significativas.'
-    },
-    {
-      id: '5',
-      nombreExamen: 'Perfil Tiroideo',
-      tipo: 'laboratorio',
-      fechaExamen: '2024-02-12',
-      fechaResultado: '2024-02-12',
-      medicoSolicitante: 'Dr. Carlos Rodríguez',
-      laboratorio: 'Laboratorio Central',
-      estado: 'pendiente',
-      observaciones: 'Resultados en proceso de validación.'
-    }
-  ];
+  private resultadoService = inject(ResultadoService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
 
+  // Datos reales
+  resultados: Resultado[] = [];
+  usuarioActual: User | null = null;
+
+  // Datos estáticos (pueden venir de otro servicio)
   alertasImportantes: Alerta[] = [
     {
       id: '1',
@@ -136,12 +66,6 @@ export class ResultadosMedicos implements OnInit {
       mensaje: 'Triglicéridos por encima del rango normal',
       nivel: 'media',
       fecha: '2024-02-11'
-    },
-    {
-      id: '3',
-      mensaje: 'Próximo control de perfil lipídico en 3 meses',
-      nivel: 'baja',
-      fecha: '2024-02-11'
     }
   ];
 
@@ -151,20 +75,14 @@ export class ResultadosMedicos implements OnInit {
       nombre: 'Ecografía Abdominal',
       instrucciones: 'Ayuno de 8 horas antes del examen',
       fechaProgramada: '2024-02-20'
-    },
-    {
-      id: '2',
-      nombre: 'Prueba de Esfuerzo',
-      instrucciones: 'Usar ropa deportiva y zapatos cómodos',
-      fechaProgramada: '2024-02-25'
     }
   ];
 
   terminoBusqueda: string = '';
   filtroTipo: string = 'todos';
   filtroEstado: string = 'todos';
-  resultadosFiltrados: ResultadoMedico[] = [];
-  resultadoSeleccionado: ResultadoMedico | null = null;
+  resultadosFiltrados: any[] = [];
+  resultadoSeleccionado: any = null;
   contadores: Contadores = {
     totales: 0,
     normales: 0,
@@ -172,16 +90,176 @@ export class ResultadosMedicos implements OnInit {
     pendientes: 0
   };
 
-  constructor(private router: Router) {}
+  isLoading: boolean = true;
+  errorMessage: string = '';
+
+  constructor() {}
 
   ngOnInit() {
+    this.usuarioActual = this.authService.getCurrentUser();
+    
+    if (!this.usuarioActual) {
+      this.errorMessage = 'No se pudo obtener la información del usuario.';
+      this.isLoading = false;
+      return;
+    }
+
+    this.cargarResultados();
+  }
+
+  // Cargar resultados del servicio
+  cargarResultados(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    const filtros: ResultadoFiltros = { paciente: this.usuarioActual?.id };
+
+    this.resultadoService.listarResultados(filtros).subscribe({
+      next: (resultados) => {
+        this.resultados = resultados;
+        this.procesarResultados();
+        this.calcularContadores();
+        this.filtrarResultados();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error al cargar resultados:', error);
+        this.errorMessage = 'Error al cargar los resultados médicos. Inténtelo de nuevo.';
+        this.isLoading = false;
+        
+        // Datos de ejemplo en caso de error (solo para desarrollo)
+        this.cargarResultadosDeEjemplo();
+      }
+    });
+  }
+
+  // Procesar resultados para adaptarlos a la interfaz de la vista
+  private procesarResultados(): void {
+    this.resultadosFiltrados = this.resultados.map(resultado => ({
+      id: resultado._id,
+      nombreExamen: this.obtenerNombreExamen(resultado.tipo),
+      tipo: this.mapearTipo(resultado.tipo),
+      fechaExamen: resultado.fechaResultado,
+      fechaResultado: resultado.fechaResultado,
+      medicoSolicitante: 'Dr. Especialista', // Puedes obtener esto de otro servicio
+      laboratorio: 'Laboratorio Clínico', // Puedes obtener esto de otro servicio
+      estado: this.determinarEstado(resultado),
+      valores: this.extraerValores(resultado),
+      observaciones: resultado.descripcion,
+      archivoUrl: resultado.archivoUrl,
+      resultadoOriginal: resultado // Guardar el resultado original para referencia
+    }));
+  }
+
+  private obtenerNombreExamen(tipo: string): string {
+    const nombres: { [key: string]: string } = {
+      'hemograma': 'Hemograma Completo',
+      'perfil_lipidico': 'Perfil Lipídico',
+      'glucosa': 'Glucosa en Sangre',
+      'tiroides': 'Perfil Tiroideo',
+      'hepatico': 'Perfil Hepático',
+      'renal': 'Perfil Renal',
+      'orina': 'Análisis de Orina',
+      'heces': 'Análisis de Heces',
+      'radiografia': 'Radiografía',
+      'ecografia': 'Ecografía',
+      'tomografia': 'Tomografía',
+      'resonancia': 'Resonancia Magnética'
+    };
+    return nombres[tipo] || `Examen de ${tipo}`;
+  }
+
+  private mapearTipo(tipo: string): 'laboratorio' | 'imagen' | 'especialidad' | 'general' {
+    const tiposLaboratorio = ['hemograma', 'perfil_lipidico', 'glucosa', 'tiroides', 'hepatico', 'renal', 'orina', 'heces'];
+    const tiposImagen = ['radiografia', 'ecografia', 'tomografia', 'resonancia'];
+    
+    if (tiposLaboratorio.includes(tipo)) return 'laboratorio';
+    if (tiposImagen.includes(tipo)) return 'imagen';
+    if (tipo.includes('especialidad')) return 'especialidad';
+    return 'general';
+  }
+
+  private determinarEstado(resultado: Resultado): 'normal' | 'anormal' | 'pendiente' {
+    // Lógica para determinar el estado basado en la descripción o valores
+    const descripcion = resultado.descripcion.toLowerCase();
+    
+    if (descripcion.includes('normal') || descripcion.includes('dentro de parámetros')) {
+      return 'normal';
+    } else if (descripcion.includes('elevado') || descripcion.includes('anormal') || descripcion.includes('alterado')) {
+      return 'anormal';
+    } else {
+      return 'pendiente';
+    }
+  }
+
+  private extraerValores(resultado: Resultado): ValorResultado[] {
+    // Esta es una implementación básica. Puedes mejorar según tu estructura de datos
+    // o crear un campo específico para valores en el modelo Resultado
+    const valores: ValorResultado[] = [];
+    
+    // Ejemplo de extracción de valores desde la descripción
+    // En una implementación real, tendrías un campo separado para los valores
+    if (resultado.tipo === 'hemograma') {
+      valores.push(
+        { nombre: 'Hemoglobina', resultado: '14.2', unidad: 'g/dL', rangoNormal: '13.5-17.5', estado: 'normal' },
+        { nombre: 'Leucocitos', resultado: '7.8', unidad: 'x10³/μL', rangoNormal: '4.5-11.0', estado: 'normal' }
+      );
+    } else if (resultado.tipo === 'perfil_lipidico') {
+      valores.push(
+        { nombre: 'Colesterol Total', resultado: '240', unidad: 'mg/dL', rangoNormal: '<200', estado: 'anormal' },
+        { nombre: 'HDL', resultado: '45', unidad: 'mg/dL', rangoNormal: '>40', estado: 'normal' }
+      );
+    }
+    
+    return valores;
+  }
+
+  // Datos de ejemplo para desarrollo
+  private cargarResultadosDeEjemplo(): void {
+    this.resultados = [
+      {
+        _id: '1',
+        paciente: {
+          _id: this.usuarioActual?.id || '',
+          documento: '123456789',
+          user: {
+            nombre: this.usuarioActual?.nombre || 'Usuario',
+            email: this.usuarioActual?.email || 'usuario@email.com'
+          }
+        },
+        tipo: 'hemograma',
+        descripcion: 'Resultados dentro de parámetros normales. Hemoglobina 14.2 g/dL, Leucocitos 7.8 x10³/μL.',
+        fechaResultado: new Date().toISOString(),
+        archivoUrl: 'https://ejemplo.com/resultado1.pdf',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        _id: '2',
+        paciente: {
+          _id: this.usuarioActual?.id || '',
+          documento: '123456789',
+          user: {
+            nombre: this.usuarioActual?.nombre || 'Usuario',
+            email: this.usuarioActual?.email || 'usuario@email.com'
+          }
+        },
+        tipo: 'perfil_lipidico',
+        descripcion: 'Colesterol elevado. Se recomienda consulta con especialista. Colesterol Total: 240 mg/dL.',
+        fechaResultado: new Date(Date.now() - 86400000).toISOString(),
+        archivoUrl: 'https://ejemplo.com/resultado2.pdf',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+    this.procesarResultados();
     this.calcularContadores();
     this.filtrarResultados();
   }
 
   // Filtros y búsqueda
   filtrarResultados(): void {
-    let filtered = [...this.resultados];
+    let filtered = [...this.resultadosFiltrados];
 
     // Filtro por tipo
     if (this.filtroTipo !== 'todos') {
@@ -199,7 +277,8 @@ export class ResultadosMedicos implements OnInit {
       filtered = filtered.filter(resultado =>
         resultado.nombreExamen.toLowerCase().includes(searchTerm) ||
         resultado.medicoSolicitante.toLowerCase().includes(searchTerm) ||
-        resultado.laboratorio.toLowerCase().includes(searchTerm)
+        resultado.laboratorio.toLowerCase().includes(searchTerm) ||
+        resultado.resultadoOriginal.descripcion.toLowerCase().includes(searchTerm)
       );
     }
 
@@ -208,14 +287,14 @@ export class ResultadosMedicos implements OnInit {
 
   // Cálculo de estadísticas
   calcularContadores(): void {
-    this.contadores.totales = this.resultados.length;
-    this.contadores.normales = this.resultados.filter(r => r.estado === 'normal').length;
-    this.contadores.anormales = this.resultados.filter(r => r.estado === 'anormal').length;
-    this.contadores.pendientes = this.resultados.filter(r => r.estado === 'pendiente').length;
+    this.contadores.totales = this.resultadosFiltrados.length;
+    this.contadores.normales = this.resultadosFiltrados.filter(r => r.estado === 'normal').length;
+    this.contadores.anormales = this.resultadosFiltrados.filter(r => r.estado === 'anormal').length;
+    this.contadores.pendientes = this.resultadosFiltrados.filter(r => r.estado === 'pendiente').length;
   }
 
   // Getters para datos procesados
-  get resultadosRecientes(): ResultadoMedico[] {
+  get resultadosRecientes(): any[] {
     const hace30Dias = new Date();
     hace30Dias.setDate(hace30Dias.getDate() - 30);
     
@@ -296,19 +375,24 @@ export class ResultadosMedicos implements OnInit {
   }
 
   // Acciones
-  verDetalles(resultado: ResultadoMedico): void {
+  verDetalles(resultado: any): void {
     this.resultadoSeleccionado = resultado;
     console.log('Ver detalles de resultado:', resultado);
     // Aquí podrías abrir un modal con más detalles
     alert(`Mostrando detalles de: ${resultado.nombreExamen}`);
   }
 
-  descargarResultado(resultado: ResultadoMedico): void {
-    console.log('Descargando resultado:', resultado);
-    alert(`Descargando PDF de: ${resultado.nombreExamen}`);
+  descargarResultado(resultado: any): void {
+    if (resultado.archivoUrl) {
+      // Descargar el archivo real si existe
+      window.open(resultado.archivoUrl, '_blank');
+    } else {
+      console.log('Descargando resultado:', resultado);
+      alert(`Descargando PDF de: ${resultado.nombreExamen}`);
+    }
   }
 
-  compartirResultado(resultado: ResultadoMedico): void {
+  compartirResultado(resultado: any): void {
     console.log('Compartiendo resultado:', resultado);
     alert(`Compartiendo resultado: ${resultado.nombreExamen}`);
   }
@@ -342,15 +426,23 @@ export class ResultadosMedicos implements OnInit {
     alert(`Alerta: ${alerta.mensaje}`);
   }
 
+  // Recargar resultados
+  recargarResultados(): void {
+    this.cargarResultados();
+  }
+
   // Efecto de partículas
   crearEfectoParticulas(event: MouseEvent): void {
-    const button = event.target as HTMLButtonElement;
+    const button = event.target as HTMLElement;
+    const btn = button.closest('button') as HTMLButtonElement;
     
+    if (!btn) return;
+
     for (let i = 0; i < 8; i++) {
       const particle = document.createElement('div');
       particle.classList.add('button-particle');
       
-      const rect = button.getBoundingClientRect();
+      const rect = btn.getBoundingClientRect();
       const x = (event.clientX - rect.left) + (Math.random() - 0.5) * 40;
       const y = (event.clientY - rect.top) + (Math.random() - 0.5) * 40;
       
@@ -359,7 +451,7 @@ export class ResultadosMedicos implements OnInit {
       particle.style.left = `${x}px`;
       particle.style.top = `${y}px`;
       
-      const particlesContainer = button.querySelector('.button-particles') || button;
+      const particlesContainer = btn.querySelector('.button-particles') || btn;
       particlesContainer.appendChild(particle);
       
       setTimeout(() => {

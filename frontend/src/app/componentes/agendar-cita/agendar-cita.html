@@ -27,76 +27,25 @@
       <div class="form-container">
         <form class="agendar-form" (ngSubmit)="onSubmit()" #citaForm="ngForm">
           
-          <!-- Información Personal -->
+          <!-- Información del Paciente (solo lectura) -->
           <div class="form-section">
             <h3 class="section-title">
               <i class="fas fa-user"></i>
-              Información Personal
+              Información del Paciente
             </h3>
             
-            <div class="input-row">
-              <div class="input-group">
-                <input 
-                  type="text" 
-                  id="nombre" 
-                  name="nombre" 
-                  required 
-                  [(ngModel)]="citaData.nombre"
-                  placeholder=" "
-                  [class.invalid]="citaData.nombre && !validarNombre()">
-                <label for="nombre">Nombre Completo</label>
-                <div *ngIf="citaData.nombre && !validarNombre()" class="validation-hint">
-                  Mínimo 2 caracteres
-                </div>
+            <div class="patient-info-card">
+              <div class="patient-info-item">
+                <span class="info-label">Nombre:</span>
+                <span class="info-value">{{usuarioActual?.nombre || 'Cargando...'}}</span>
               </div>
-
-              <div class="input-group">
-                <input 
-                  type="email" 
-                  id="email" 
-                  name="email" 
-                  required 
-                  [(ngModel)]="citaData.email"
-                  placeholder=" "
-                  [class.invalid]="citaData.email && !validarEmail()">
-                <label for="email">Correo Electrónico</label>
-                <div *ngIf="citaData.email && !validarEmail()" class="validation-hint">
-                  Formato de email inválido
-                </div>
+              <div class="patient-info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{usuarioActual?.email || 'Cargando...'}}</span>
               </div>
-            </div>
-
-            <div class="input-row">
-              <div class="input-group">
-                <input 
-                  type="tel" 
-                  id="telefono" 
-                  name="telefono" 
-                  required 
-                  [(ngModel)]="citaData.telefono"
-                  placeholder=" "
-                  [class.invalid]="citaData.telefono && !validarTelefono()">
-                <label for="telefono">Teléfono</label>
-                <div *ngIf="citaData.telefono && !validarTelefono()" class="validation-hint">
-                  Formato de teléfono inválido
-                </div>
-              </div>
-
-              <div class="input-group">
-                <input 
-                  type="number" 
-                  id="edad" 
-                  name="edad" 
-                  required 
-                  [(ngModel)]="citaData.edad"
-                  placeholder=" "
-                  min="1"
-                  max="120"
-                  [class.invalid]="citaData.edad && !validarEdad()">
-                <label for="edad">Edad</label>
-                <div *ngIf="citaData.edad && !validarEdad()" class="validation-hint">
-                  Edad debe ser entre 1 y 120 años
-                </div>
+              <div class="patient-info-note">
+                <i class="fas fa-info-circle"></i>
+                <span>Tu información personal se obtiene automáticamente de tu cuenta.</span>
               </div>
             </div>
           </div>
@@ -202,7 +151,7 @@
                 rows="4" 
                 required 
                 [(ngModel)]="citaData.motivo"
-                placeholder=" "
+                placeholder="Describa el motivo de su consulta (mínimo 10 caracteres)"
                 [class.invalid]="citaData.motivo && !validarMotivo()"></textarea>
               <label for="motivo">Describa el motivo de su consulta</label>
               <div *ngIf="citaData.motivo && !validarMotivo()" class="validation-hint">
@@ -224,7 +173,8 @@
             <button 
               type="submit" 
               class="btn-primary"
-              [disabled]="!formularioValido() || isLoading">
+              [disabled]="!formularioValido() || isLoading"
+              (click)="crearEfectoParticulas($event)">
               <i class="fas fa-calendar-check"></i>
               {{isLoading ? 'Agendando...' : 'Confirmar Cita'}}
               <div class="button-particles">
@@ -245,10 +195,10 @@
             Resumen de Cita
           </h3>
           
-          <div class="summary-content" *ngIf="citaData.nombre; else emptyState">
+          <div class="summary-content" *ngIf="usuarioActual; else emptyState">
             <div class="summary-item">
               <span class="summary-label">Paciente:</span>
-              <span class="summary-value">{{citaData.nombre}}</span>
+              <span class="summary-value">{{usuarioActual.nombre}}</span>
             </div>
             
             <div class="summary-item">

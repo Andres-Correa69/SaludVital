@@ -1,27 +1,10 @@
-import { Component, ElementRef, AfterViewInit, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, AfterViewInit, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { ActivatedRoute, Router, NavigationStart } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../servicios/auth.service';
-
-interface RegisterDto {
-  email: string;
-  password: string;
-  nombre: string;
-}
-
-interface User {
-  id: string;
-  email: string;
-  nombre: string;
-}
-
-interface AuthResponse {
-  user: User;
-  token: string;
-}
+import { RegisterDto, AuthResponse } from '../../modelos/auth.models';
 
 @Component({
   selector: 'app-registro',
@@ -31,11 +14,18 @@ interface AuthResponse {
   styleUrls: ['./registro.css']
 })
 export class Registro implements OnInit, AfterViewInit, OnDestroy {
+  // Inyectar servicios
+  private authService = inject(AuthService);
+  private router = inject(Router);
+  private elementRef = inject(ElementRef);
+  private route = inject(ActivatedRoute);
+
   // Campos del formulario
   nombre: string = '';
   email: string = '';
-  contrasena: string = '';
-  confirmarContrasena: string = '';
+  password: string = '';
+  confirmarPassword: string = '';
+  rol: 'paciente' | 'medico' = 'paciente';
   
   // Términos
   aceptoTerminos: boolean = false;
@@ -49,15 +39,11 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
   
   private hasSwapped: boolean = false;
   private routerSubscription: Subscription;
+  private redirectTimer: any;
 
   @ViewChild('registerForm') registerForm: any;
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private elementRef: ElementRef,
-    private route: ActivatedRoute
-  ) {
+  constructor() {
     this.routerSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         if (event.url.includes('/registro')) {
@@ -69,12 +55,28 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.clearMessages();
+    // Verificar si hay un parámetro de rol en la URL
+    this.checkUrlParameters();
   }
 
   ngOnDestroy() {
     if (this.routerSubscription) {
       this.routerSubscription.unsubscribe();
     }
+    if (this.redirectTimer) {
+      clearTimeout(this.redirectTimer);
+    }
+  }
+
+  private checkUrlParameters(): void {
+    this.route.queryParams.subscribe(params => {
+      if (params['rol']) {
+        const requestedRole = params['rol'].toLowerCase();
+        if (requestedRole === 'medico' || requestedRole === 'paciente') {
+          this.rol = requestedRole;
+        }
+      }
+    });
   }
 
   ngAfterViewInit(): void {
@@ -113,7 +115,6 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
       const particle = document.createElement('div');
       particle.classList.add('button-particle');
       
-      // Posición aleatoria desde el punto de clic
       const x = (event.clientX - rect.left) + (Math.random() - 0.5) * 40;
       const y = (event.clientY - rect.top) + (Math.random() - 0.5) * 40;
       
@@ -124,13 +125,27 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
       
       button.appendChild(particle);
       
-      // Remover la partícula después de la animación
       setTimeout(() => {
         if (particle.parentNode) {
           particle.parentNode.removeChild(particle);
         }
       }, 1500);
     }
+  }
+
+  // Selección de rol
+  selectRole(role: 'paciente' | 'medico'): void {
+    if (this.isLoading) return;
+    
+    this.rol = role;
+    this.onInputChange();
+    
+    // Actualizar la URL sin recargar la página
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { rol: role },
+      queryParamsHandling: 'merge'
+    });
   }
 
   onRegister(): void {
@@ -149,55 +164,120 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
 
     // Crear el DTO para el registro
     const registerDto: RegisterDto = {
+      nombre: this.nombre.trim(),
       email: this.email.trim(),
-      password: this.contrasena,
-      nombre: this.nombre.trim()
+      password: this.password,
+      rol: this.rol
     };
+
+    console.log('Enviando registro:', registerDto);
 
     // Llamar al servicio de autenticación
     this.authService.register(registerDto).subscribe({
-      next: (response: AuthResponse | null) => {
+      next: (response: any) => {
         this.isLoading = false;
-        
-        // Verificar si la respuesta es válida (no es null)
-        if (response && response.user && response.token) {
-          this.handleRegistrationSuccess();
-        } else {
-          this.showErrorAlert('El email ya está registrado. Por favor usa otro email.');
-        }
+        this.handleRegistrationSuccess(response);
       },
-      error: (error) => {
+      error: (error: any) => {
         this.isLoading = false;
-        
-        // Manejar diferentes tipos de errores
-        if (error.status === 409) {
-          this.showErrorAlert('El email ya está registrado. Por favor usa otro email.');
-        } else if (error.status === 400) {
-          this.showErrorAlert('Datos inválidos. Por favor verifica la información.');
-        } else {
-          this.showErrorAlert('Error al crear la cuenta. Inténtalo de nuevo.');
-        }
-        
-        console.error('Error en registro:', error);
+        this.handleRegistrationError(error);
       }
     });
   }
 
-  private handleRegistrationSuccess(): void {
-    this.showSuccessAlert('¡Cuenta creada exitosamente! Serás redirigido al inicio de sesión...');
+  private handleRegistrationSuccess(response: any): void {
+    const roleMessage = this.rol === 'medico' ? 
+      '¡Cuenta de médico creada exitosamente! Redirigiendo para completar tu perfil...' : 
+      '¡Cuenta de paciente creada exitosamente! Redirigiendo al inicio...';
     
-    setTimeout(() => {
-      this.router.navigate(['/login'], { 
-        queryParams: { registered: 'true' } 
+    this.showSuccessAlert(roleMessage);
+    
+    // Guardar información del usuario en localStorage
+    this.saveUserData(response);
+    
+    // Redirección con timer
+    this.redirectTimer = setTimeout(() => {
+      this.redirectAfterRegistration();
+    }, 2500);
+  }
+
+  private saveUserData(response: any): void {
+    // Guardar token si está disponible
+    if (response.token) {
+      localStorage.setItem('auth_token', response.token);
+    }
+    
+    // Guardar información básica del usuario
+    const userData = {
+      id: response.id,
+      nombre: this.nombre,
+      email: this.email,
+      rol: this.rol,
+      registradoEn: new Date().toISOString()
+    };
+    
+    localStorage.setItem('user_data', JSON.stringify(userData));
+    localStorage.setItem('user_role', this.rol);
+  }
+
+  private redirectAfterRegistration(): void {
+    if (this.rol === 'medico') {
+      // Redirigir a completar perfil médico
+      this.router.navigate(['/medico'], {
+        state: {
+          userData: {
+            nombre: this.nombre,
+            email: this.email,
+            rol: this.rol
+          }
+        }
       });
-    }, 2000);
+    } else {
+      // Redirigir al dashboard de paciente
+      this.router.navigate(['/inicio'], {
+        state: {
+          userData: {
+            nombre: this.nombre,
+            email: this.email,
+            rol: this.rol
+          }
+        }
+      });
+    }
+  }
+
+  private handleRegistrationError(error: any): void {
+    console.error('Error en registro:', error);
+    
+    let errorMessage = 'Error al crear la cuenta. Inténtalo de nuevo.';
+    
+    if (error?.error?.includes('409') || error?.error?.includes('Email ya registrado')) {
+      errorMessage = 'El email ya está registrado. Por favor usa otro email.';
+    } else if (error?.error?.includes('400') || error?.error?.includes('Datos inválidos')) {
+      errorMessage = 'Datos inválidos. Por favor verifica la información.';
+    } else if (error?.error) {
+      errorMessage = typeof error.error === 'string' ? error.error : 'Error del servidor';
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (error?.status === 0) {
+      errorMessage = 'Error de conexión. Verifica tu internet.';
+    }
+    
+    this.showErrorAlert(errorMessage);
+  }
+
+  // Método para redirección manual (si el usuario no quiere esperar)
+  redirectNow(): void {
+    if (this.redirectTimer) {
+      clearTimeout(this.redirectTimer);
+    }
+    this.redirectAfterRegistration();
   }
 
   private showErrorAlert(message: string): void {
     this.errorMessage = message;
     this.showError = true;
     
-    // Auto-ocultar después de 5 segundos
     setTimeout(() => {
       this.clearError();
     }, 5000);
@@ -239,20 +319,18 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
 
   openTerms(event: Event): void {
     event.preventDefault();
-    // Aquí puedes implementar la lógica para mostrar términos y condiciones
-    console.log('Abrir términos y condiciones');
-    // this.router.navigate(['/terminos']);
+    // Redirigir a página de términos o abrir modal
+    this.router.navigate(['/terminos-condiciones']);
   }
 
   openPrivacy(event: Event): void {
     event.preventDefault();
-    // Aquí puedes implementar la lógica para mostrar política de privacidad
-    console.log('Abrir política de privacidad');
-    // this.router.navigate(['/privacidad']);
+    // Redirigir a página de privacidad o abrir modal
+    this.router.navigate(['/privacidad']);
   }
 
   // Métodos de validación
-  validateName(): boolean {
+  validateNombre(): boolean {
     return this.nombre.trim().length >= 2;
   }
 
@@ -262,17 +340,58 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
   }
 
   validatePassword(): boolean {
-    // Mínimo 8 caracteres, al menos 1 mayúscula y 1 número
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-    return passwordRegex.test(this.contrasena);
+    return this.password.length >= 6;
   }
 
   validatePasswordMatch(): boolean {
-    return this.contrasena === this.confirmarContrasena && this.contrasena.length > 0;
+    return this.password === this.confirmarPassword && this.password.length > 0;
+  }
+
+  // Métodos para fortaleza de contraseña
+  getPasswordStrength(): string {
+    if (!this.password) return 'empty';
+    
+    const strength = this.calculatePasswordStrength();
+    if (strength < 40) return 'weak';
+    if (strength < 70) return 'medium';
+    return 'strong';
+  }
+
+  getPasswordStrengthPercentage(): number {
+    return this.calculatePasswordStrength();
+  }
+
+  getPasswordStrengthText(): string {
+    const strength = this.getPasswordStrength();
+    switch (strength) {
+      case 'weak': return 'Débil';
+      case 'medium': return 'Media';
+      case 'strong': return 'Fuerte';
+      default: return '';
+    }
+  }
+
+  private calculatePasswordStrength(): number {
+    let strength = 0;
+    
+    // Longitud
+    if (this.password.length >= 8) strength += 25;
+    else if (this.password.length >= 6) strength += 15;
+    
+    // Mayúsculas y minúsculas
+    if (/[a-z]/.test(this.password) && /[A-Z]/.test(this.password)) strength += 25;
+    
+    // Números
+    if (/\d/.test(this.password)) strength += 25;
+    
+    // Caracteres especiales
+    if (/[^A-Za-z0-9]/.test(this.password)) strength += 25;
+    
+    return Math.min(strength, 100);
   }
 
   isFormValid(): boolean {
-    return this.validateName() && 
+    return this.validateNombre() && 
            this.validateEmail() && 
            this.validatePassword() && 
            this.validatePasswordMatch() && 
@@ -280,7 +399,6 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
            !this.isLoading;
   }
 
-  // Método para crear partículas en los enlaces (similar al login)
   createLinkParticles(event: MouseEvent): void {
     const link = event.currentTarget as HTMLAnchorElement;
     const particles = link.querySelector('.link-particles');

@@ -1,21 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Navbar } from '../navbar/navbar';
-
-interface Cita {
-  id: string;
-  fecha: string;
-  hora: string;
-  medico: string;
-  especialidad: string;
-  motivo: string;
-  estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada';
-  ubicacion: string;
-  diagnostico?: string;
-  notas?: string;
-}
+import { CitaService } from '../../servicios/cita.service';
+import { AuthService } from '../../servicios/auth.service';
+import { Cita } from '../../modelos/cita.models';
+import { User } from '../../modelos/auth.models';
 
 interface Recordatorio {
   texto: string;
@@ -38,75 +29,36 @@ interface Contadores {
   styleUrls: ['./lista-citas.css']
 })
 export class ListaCitas implements OnInit {
-  // Datos de ejemplo
-  citas: Cita[] = [
-    {
-      id: '1',
-      fecha: '2024-02-15',
-      hora: '10:00 AM',
-      medico: 'Dr. Carlos Rodríguez',
-      especialidad: 'Medicina General',
-      motivo: 'Consulta general por dolor de cabeza persistente',
-      estado: 'confirmada',
-      ubicacion: 'Consultorio 201 - Piso 2'
-    },
-    {
-      id: '2',
-      fecha: '2024-02-20',
-      hora: '03:30 PM',
-      medico: 'Dra. Ana Martínez',
-      especialidad: 'Pediatría',
-      motivo: 'Control de crecimiento y desarrollo',
-      estado: 'pendiente',
-      ubicacion: 'Consultorio 105 - Piso 1'
-    },
-    {
-      id: '3',
-      fecha: '2024-01-25',
-      hora: '09:00 AM',
-      medico: 'Dr. Miguel Sánchez',
-      especialidad: 'Cardiología',
-      motivo: 'Evaluación de presión arterial',
-      estado: 'completada',
-      ubicacion: 'Consultorio 305 - Piso 3',
-      diagnostico: 'Hipertensión controlada',
-      notas: 'Continuar con medicación actual y control mensual'
-    },
-    {
-      id: '4',
-      fecha: '2024-01-10',
-      hora: '11:00 AM',
-      medico: 'Dra. Laura García',
-      especialidad: 'Dermatología',
-      motivo: 'Revisión de lunar en brazo derecho',
-      estado: 'completada',
-      ubicacion: 'Consultorio 208 - Piso 2',
-      diagnostico: 'Nevo melanocítico benigno',
-      notas: 'No requiere intervención, control anual'
-    }
-  ];
+  private citaService = inject(CitaService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
+  // Datos reales
+  citas: Cita[] = [];
+  usuarioActual: User | null = null;
 
   recordatorios: Recordatorio[] = [
     {
-      texto: 'Recordatorio: Cita con Dr. Carlos Rodríguez',
-      tiempo: 'En 3 días',
-      icono: 'fa-calendar-day'
+      texto: 'Recuerda llegar 15 minutos antes de tu cita',
+      tiempo: 'Siempre',
+      icono: 'fa-clock'
     },
     {
-      texto: 'Resultados de laboratorio disponibles',
-      tiempo: 'Hace 2 días',
+      texto: 'Traer documento de identificación',
+      tiempo: 'En cada cita',
+      icono: 'fa-id-card'
+    },
+    {
+      texto: 'Traer resultados de exámenes previos',
+      tiempo: 'Si aplica',
       icono: 'fa-file-medical'
-    },
-    {
-      texto: 'Renovación de medicación próxima',
-      tiempo: 'En 1 semana',
-      icono: 'fa-pills'
     }
   ];
 
   filtroEstado: string = 'todas';
   citasFiltradas: Cita[] = [];
   citaSeleccionada: Cita | null = null;
+  citaEditada: any = null;
   contadores: Contadores = {
     pendientes: 0,
     confirmadas: 0,
@@ -114,9 +66,112 @@ export class ListaCitas implements OnInit {
     totales: 0
   };
 
-  constructor(private router: Router) {}
+  isLoading: boolean = true;
+  errorMessage: string = '';
+  mostrarModalDetalles: boolean = false;
+  mostrarModalEdicion: boolean = false;
+
+  // Variables para edición
+  horariosDisponibles: string[] = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '11:00', '11:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30'
+  ];
+
+  constructor() {}
 
   ngOnInit() {
+    this.usuarioActual = this.authService.getCurrentUser();
+    
+    if (!this.usuarioActual) {
+      this.errorMessage = 'No se pudo obtener la información del usuario.';
+      this.isLoading = false;
+      return;
+    }
+
+    this.cargarCitas();
+  }
+
+  // Cargar citas del servicio
+  cargarCitas(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    const filtros = { paciente: this.usuarioActual?.id };
+
+    this.citaService.listarCitas(filtros).subscribe({
+      next: (citas) => {
+        this.citas = citas;
+        this.calcularContadores();
+        this.filtrarCitas();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error al cargar citas:', error);
+        this.errorMessage = 'Error al cargar las citas. Inténtelo de nuevo.';
+        this.isLoading = false;
+        
+        // Datos de ejemplo en caso de error (solo para desarrollo)
+        this.cargarCitasDeEjemplo();
+      }
+    });
+  }
+
+  // Datos de ejemplo para desarrollo
+  private cargarCitasDeEjemplo(): void {
+    this.citas = [
+      {
+        _id: '1',
+        paciente: {
+          _id: this.usuarioActual?.id || '',
+          documento: '123456789',
+          user: {
+            nombre: this.usuarioActual?.nombre || 'Usuario',
+            email: this.usuarioActual?.email || 'usuario@email.com'
+          }
+        },
+        fecha: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 días en el futuro
+        motivo: 'Consulta general por dolor de cabeza persistente',
+        estado: 'confirmada',
+        medico: 'Dr. Carlos Rodríguez',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        _id: '2',
+        paciente: {
+          _id: this.usuarioActual?.id || '',
+          documento: '123456789',
+          user: {
+            nombre: this.usuarioActual?.nombre || 'Usuario',
+            email: this.usuarioActual?.email || 'usuario@email.com'
+          }
+        },
+        fecha: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 días en el futuro
+        motivo: 'Control de rutina',
+        estado: 'pendiente',
+        medico: 'Dra. Ana Martínez',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        _id: '3',
+        paciente: {
+          _id: this.usuarioActual?.id || '',
+          documento: '123456789',
+          user: {
+            nombre: this.usuarioActual?.nombre || 'Usuario',
+            email: this.usuarioActual?.email || 'usuario@email.com'
+          }
+        },
+        fecha: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 días en el pasado
+        motivo: 'Consulta de seguimiento',
+        estado: 'completada',
+        medico: 'Dr. Luis García',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
     this.calcularContadores();
     this.filtrarCitas();
   }
@@ -170,8 +225,23 @@ export class ListaCitas implements OnInit {
     return new Date(fecha).toLocaleDateString('es-ES', opciones);
   }
 
-  formatearFechaHora(fecha: string, hora: string): string {
-    return `${this.formatearFecha(fecha)} a las ${hora}`;
+  formatearFechaHora(fecha: string): string {
+    const opciones: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(fecha).toLocaleDateString('es-ES', opciones);
+  }
+
+  getHora(fecha: string): string {
+    const opciones: Intl.DateTimeFormatOptions = { 
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(fecha).toLocaleTimeString('es-ES', opciones);
   }
 
   getDia(fecha: string): string {
@@ -215,65 +285,169 @@ export class ListaCitas implements OnInit {
     return mensajes[this.filtroEstado] || '';
   }
 
-  // Acciones
+  // Acciones principales
   irAAgendarCita(): void {
     this.router.navigate(['/agendar-cita']);
   }
 
   verDetalles(cita: Cita): void {
     this.citaSeleccionada = cita;
-    // Aquí podrías abrir un modal con más detalles
-    console.log('Ver detalles de cita:', cita);
+    this.mostrarModalDetalles = true;
+  }
+
+  cerrarModalDetalles(): void {
+    this.mostrarModalDetalles = false;
+    this.citaSeleccionada = null;
   }
 
   editarCita(cita: Cita): void {
-    console.log('Editar cita:', cita);
-    // Navegar a edición o abrir modal de edición
-    alert(`Función de edición para cita con ${cita.medico}`);
+    this.citaSeleccionada = cita;
+    this.citaEditada = {
+      ...cita,
+      fecha: this.obtenerFechaFormatoInput(cita.fecha),
+      hora: this.getHora(cita.fecha)
+    };
+    this.mostrarModalEdicion = true;
+  }
+
+  cancelarEdicion(): void {
+    this.mostrarModalEdicion = false;
+    this.citaSeleccionada = null;
+    this.citaEditada = null;
+  }
+
+  guardarEdicion(): void {
+    if (!this.formularioEdicionValido() || !this.citaSeleccionada || !this.citaEditada) {
+      return;
+    }
+
+    this.isLoading = true;
+
+    // Combinar fecha y hora
+    const fechaCompleta = new Date(this.citaEditada.fecha);
+    const [horas, minutos] = this.citaEditada.hora.split(':');
+    fechaCompleta.setHours(parseInt(horas), parseInt(minutos));
+
+    const datosActualizados = {
+      medico: this.citaEditada.medico,
+      fecha: fechaCompleta.toISOString(),
+      motivo: this.citaEditada.motivo
+    };
+
+    this.citaService.actualizarCita(this.citaSeleccionada._id, datosActualizados).subscribe({
+      next: (citaActualizada) => {
+        // Actualizar la cita localmente
+        const index = this.citas.findIndex(c => c._id === this.citaSeleccionada!._id);
+        if (index !== -1) {
+          this.citas[index] = citaActualizada;
+        }
+        this.calcularContadores();
+        this.filtrarCitas();
+        this.isLoading = false;
+        this.mostrarModalEdicion = false;
+        this.citaSeleccionada = null;
+        this.citaEditada = null;
+        alert('Cita actualizada exitosamente');
+      },
+      error: (error) => {
+        console.error('Error al actualizar cita:', error);
+        this.isLoading = false;
+        alert('Error al actualizar la cita. Inténtelo de nuevo.');
+      }
+    });
+  }
+
+  formularioEdicionValido(): boolean {
+    return !!(this.citaEditada?.medico && 
+              this.citaEditada?.fecha && 
+              this.citaEditada?.hora && 
+              this.citaEditada?.motivo);
   }
 
   cancelarCita(cita: Cita): void {
     if (confirm(`¿Estás seguro de que deseas cancelar la cita con ${cita.medico}?`)) {
-      cita.estado = 'cancelada';
-      this.calcularContadores();
-      this.filtrarCitas();
-      alert('Cita cancelada exitosamente');
+      this.isLoading = true;
+      
+      this.citaService.actualizarCita(cita._id, { estado: 'cancelada' }).subscribe({
+        next: (citaActualizada) => {
+          // Actualizar la cita localmente
+          const index = this.citas.findIndex(c => c._id === cita._id);
+          if (index !== -1) {
+            this.citas[index] = citaActualizada;
+          }
+          this.calcularContadores();
+          this.filtrarCitas();
+          this.isLoading = false;
+          alert('Cita cancelada exitosamente');
+        },
+        error: (error) => {
+          console.error('Error al cancelar cita:', error);
+          this.isLoading = false;
+          alert('Error al cancelar la cita. Inténtelo de nuevo.');
+        }
+      });
     }
   }
 
   confirmarCita(cita: Cita): void {
-    cita.estado = 'confirmada';
-    this.calcularContadores();
-    this.filtrarCitas();
-    alert('Cita confirmada exitosamente');
-  }
-
-  cerrarModal(): void {
-    this.citaSeleccionada = null;
+    this.isLoading = true;
+    
+    this.citaService.actualizarCita(cita._id, { estado: 'confirmada' }).subscribe({
+      next: (citaActualizada) => {
+        // Actualizar la cita localmente
+        const index = this.citas.findIndex(c => c._id === cita._id);
+        if (index !== -1) {
+          this.citas[index] = citaActualizada;
+        }
+        this.calcularContadores();
+        this.filtrarCitas();
+        this.isLoading = false;
+        alert('Cita confirmada exitosamente');
+      },
+      error: (error) => {
+        console.error('Error al confirmar cita:', error);
+        this.isLoading = false;
+        alert('Error al confirmar la cita. Inténtelo de nuevo.');
+      }
+    });
   }
 
   // Acciones rápidas
   descargarHistorial(): void {
-    alert('Función de descarga de historial médico');
+    alert('Función de descarga de historial médico - Disponible próximamente');
   }
 
   contactarSoporte(): void {
-    alert('Función de contacto con soporte');
+    alert('Función de contacto con soporte - Disponible próximamente');
   }
 
   verResultados(): void {
     this.router.navigate(['/resultados-medicos']);
   }
 
+  // Utilidades adicionales
+  obtenerFechaFormatoInput(fecha: string): string {
+    const date = new Date(fecha);
+    return date.toISOString().split('T')[0];
+  }
+
+  get fechaMinima(): string {
+    const hoy = new Date();
+    return hoy.toISOString().split('T')[0];
+  }
+
   // Efecto de partículas
   crearEfectoParticulas(event: MouseEvent): void {
-    const button = event.target as HTMLButtonElement;
+    const button = event.target as HTMLElement;
+    const btn = button.closest('button') as HTMLButtonElement;
     
+    if (!btn) return;
+
     for (let i = 0; i < 8; i++) {
       const particle = document.createElement('div');
       particle.classList.add('button-particle');
       
-      const rect = button.getBoundingClientRect();
+      const rect = btn.getBoundingClientRect();
       const x = (event.clientX - rect.left) + (Math.random() - 0.5) * 40;
       const y = (event.clientY - rect.top) + (Math.random() - 0.5) * 40;
       
@@ -282,7 +456,7 @@ export class ListaCitas implements OnInit {
       particle.style.left = `${x}px`;
       particle.style.top = `${y}px`;
       
-      const particlesContainer = button.querySelector('.button-particles') || button;
+      const particlesContainer = btn.querySelector('.button-particles') || btn;
       particlesContainer.appendChild(particle);
       
       setTimeout(() => {
@@ -290,6 +464,23 @@ export class ListaCitas implements OnInit {
           particle.parentNode.removeChild(particle);
         }
       }, 1500);
+    }
+  }
+
+  // Recargar citas
+  recargarCitas(): void {
+    this.cargarCitas();
+  }
+
+  // Cerrar modales con ESC
+  onKeydownEvent(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      if (this.mostrarModalDetalles) {
+        this.cerrarModalDetalles();
+      }
+      if (this.mostrarModalEdicion) {
+        this.cancelarEdicion();
+      }
     }
   }
 }

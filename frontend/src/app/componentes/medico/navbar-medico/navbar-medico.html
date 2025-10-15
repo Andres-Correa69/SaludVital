@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navbar Médico - Salud Vital</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <nav class="navbar-medico">
+    <div class="nav-container">
+      <!-- Logo y Brand -->
+      <div class="nav-brand">
+        <div class="logo-medico">
+          <i class="fas fa-stethoscope"></i>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Salud Vital</span>
+          <span class="brand-subtitle">Panel Médico</span>
+        </div>
+      </div>
+
+      <!-- Menú de navegación para médicos -->
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irADashboard()"
+                  [class.active]="seccionActiva === 'dashboard'">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irACitas()"
+                  [class.active]="seccionActiva === 'citas'">
+            <i class="fas fa-calendar-check"></i>
+            <span>Gestión de Citas</span>
+            <span class="nav-badge" *ngIf="seccionActiva === 'citas'">Citas</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAPacientes()"
+                  [class.active]="seccionActiva === 'pacientes'">
+            <i class="fas fa-user-injured"></i>
+            <span>Mis Pacientes</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAResultados()"
+                  [class.active]="seccionActiva === 'resultados'">
+            <i class="fas fa-file-medical-alt"></i>
+            <span>Resultados</span>
+          </button>
+        </li>
+        
+        <li class="nav-item">
+          <button class="nav-link" 
+                  (click)="irAPerfil()"
+                  [class.active]="seccionActiva === 'perfil'">
+            <i class="fas fa-user-md"></i>
+            <span>Perfil Médico</span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Menú de usuario médico -->
+      <div class="nav-user">
+        <div class="user-info">
+          <div class="user-avatar-medico">
+            <i class="fas fa-user-md"></i>
+          </div>
+          <div class="user-details">
+            <span class="user-name">{{nombreUsuario}}</span>
+            <span class="user-role">Médico</span>
+          </div>
+        </div>
+        
+        <button class="logout-btn" (click)="salir()" title="Cerrar sesión">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="logout-text">Cerrar Sesión</span>
+          <div class="button-particles">
+            <div class="button-particle"></div>
+            <div class="button-particle"></div>
+            <div class="button-particle"></div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Menú móvil (hamburguesa) -->
+      <div class="mobile-menu">
+        <button class="menu-toggle" id="menuToggle">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Menú móvil desplegable -->
+    <div class="mobile-nav" id="mobileNav">
+      <div class="mobile-nav-header">
+        <span class="mobile-user-info">{{nombreUsuario}}</span>
+        <button class="mobile-close" id="mobileClose">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="mobile-nav-items">
+        <button class="mobile-nav-item" (click)="irADashboard()">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="mobile-nav-item" (click)="irACitas()">
+          <i class="fas fa-calendar-check"></i>
+          <span>Gestión de Citas</span>
+        </button>
+        <button class="mobile-nav-item" (click)="irAPacientes()">
+          <i class="fas fa-user-injured"></i>
+          <span>Mis Pacientes</span>
+        </button>
+        <button class="mobile-nav-item" (click)="irAResultados()">
+          <i class="fas fa-file-medical-alt"></i>
+          <span>Resultados</span>
+        </button>
+        <button class="mobile-nav-item" (click)="irAPerfil()">
+          <i class="fas fa-user-md"></i>
+          <span>Perfil Médico</span>
+        </button>
+        <button class="mobile-nav-item logout" (click)="salir()">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+</body>
+</html>

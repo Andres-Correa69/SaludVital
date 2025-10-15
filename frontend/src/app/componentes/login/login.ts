@@ -1,10 +1,10 @@
-import { Component, ElementRef, AfterViewInit, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, AfterViewInit, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router, NavigationStart } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../servicios/auth.service';
+import { LoginDto } from '../../modelos/auth.models';
 
 @Component({
   selector: 'app-login',
@@ -14,22 +14,25 @@ import { AuthService } from '../../servicios/auth.service';
   styleUrls: ['./login.css']
 })
 export class Login implements OnInit, AfterViewInit, OnDestroy {
-  nombreUsuario: string = '';
-  contrasena: string = '';
+  private authService = inject(AuthService);
+  private router = inject(Router);
+  private elementRef = inject(ElementRef);
+  private route = inject(ActivatedRoute);
+
+  email: string = '';
+  password: string = '';
+  
   isLoading: boolean = false;
   errorMessage: string = '';
   showError: boolean = false;
+  successMessage: string = '';
+  showSuccess: boolean = false;
   
   private hasSwapped: boolean = false;
   private returnUrl: string = '';
   private routerSubscription: Subscription;
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private elementRef: ElementRef,
-    private route: ActivatedRoute
-  ) {
+  constructor() {
     this.routerSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
         if (event.url.includes('/login')) {
@@ -40,8 +43,6 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.authService.logout();
-    
     this.route.queryParams.subscribe(params => {
       this.returnUrl = params['returnUrl'] || '';
       
@@ -51,6 +52,10 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
       
       if (params['unauthorized']) {
         this.showErrorAlert('No tiene permisos para acceder a esa página.');
+      }
+
+      if (params['registered']) {
+        this.showSuccessAlert('¡Registro exitoso! Por favor inicia sesión.');
       }
     });
 
@@ -64,7 +69,6 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // Espera inicial antes de comenzar la transición
     setTimeout(() => {
       this.initSmoothSwap();
     }, 500);
@@ -74,76 +78,87 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
     const loginContainer = this.elementRef.nativeElement.querySelector('.login-container');
     
     if (loginContainer && !this.hasSwapped) {
-      // Inicia el estado de transición
       loginContainer.classList.add('swap-init');
       
-      // Espera 1200ms (igual a la duración de la transición CSS) antes de completar
       setTimeout(() => {
         loginContainer.classList.remove('swap-init');
         loginContainer.classList.add('swap-completed');
         this.hasSwapped = true;
-        
-        // Activa efectos secundarios después de completar la transición
-        
-      }, 800); // Esta duración coincide con la transición CSS
+      }, 800);
     }
   }
 
   onLogin(): void {
-    // Redirigir directamente al inicio sin validaciones
-    this.isLoading = true;
-    
-    // Simular un pequeño delay para la transición
-    setTimeout(() => {
-      this.isLoading = false;
-      this.router.navigate(['/inicio']);
-    }, 1000);
-    
-    /*
-    // Código comentado - validaciones originales
-    if (!this.nombreUsuario.trim() || !this.contrasena.trim()) {
-      this.showErrorAlert('Por favor ingresa usuario y contraseña');
-      return;
-    }
-
-    if (this.nombreUsuario.trim().length < 3) {
-      this.showErrorAlert('El usuario debe tener al menos 3 caracteres');
-      return;
-    }
-
-    if (this.contrasena.length < 4) {
-      this.showErrorAlert('La contraseña debe tener al menos 4 caracteres');
+    if (!this.isFormValid()) {
+      this.showErrorAlert('Por favor ingresa email y contraseña válidos');
       return;
     }
 
     this.isLoading = true;
     this.clearError();
 
-    const usuarioLimpio = this.nombreUsuario.trim();
-    const contrasenaLimpia = this.contrasena.trim();
+    const loginDto: LoginDto = {
+      email: this.email.trim(),
+      password: this.password
+    };
 
-    // Simulación de login (reemplazar con tu servicio real)
-    setTimeout(() => {
-      this.isLoading = false;
-      if (usuarioLimpio === 'paciente' && contrasenaLimpia === '1234') {
-        this.handleLoginSuccess();
-      } else {
-        this.showErrorAlert('Usuario o contraseña incorrectos');
+    console.log('Enviando login:', loginDto);
+
+    this.authService.login(loginDto).subscribe({
+      next: (response: any) => {
+        this.isLoading = false;
+        this.handleLoginSuccess(response);
+      },
+      error: (error: any) => {
+        this.isLoading = false;
+        this.handleLoginError(error);
       }
-    }, 1500);
-    */
+    });
   }
 
-  private handleLoginSuccess(): void {
-    this.showSuccessAlert('¡Bienvenido a Salud Vital! Redirigiendo...');
+  private handleLoginSuccess(response: any): void {
+    const user = this.authService.getCurrentUser();
+    this.showSuccessAlert(`¡Bienvenido a Salud Vital ${user?.nombre}! Redirigiendo...`);
     
     setTimeout(() => {
-      if (this.returnUrl) {
-        this.router.navigateByUrl(this.returnUrl);
-      } else {
-        this.router.navigate(['/inicio']);
-      }
+      this.redirectByRole(user);
     }, 1000);
+  }
+
+  private redirectByRole(user: any): void {
+    // Si hay una returnUrl específica y el usuario tiene permisos, usarla
+    if (this.returnUrl) {
+      this.router.navigateByUrl(this.returnUrl);
+      return;
+    }
+
+    // Redirección basada en el rol
+    switch (user?.rol) {
+      case 'medico':
+        this.router.navigate(['/medico']); // Cambiar por la ruta deseada para médicos
+        break;
+      case 'admin':
+        this.router.navigate(['/admin/dashboard']);
+        break;
+      case 'paciente':
+      default:
+        this.router.navigate(['/inicio']);
+        break;
+    }
+  }
+
+  private handleLoginError(error: any): void {
+    console.error('Error en login:', error);
+    
+    if (error?.message?.includes('401') || error?.message?.includes('Credenciales inválidas')) {
+      this.showErrorAlert('Email o contraseña incorrectos');
+    } else if (error?.message?.includes('400') || error?.message?.includes('Datos inválidos')) {
+      this.showErrorAlert('Datos inválidos. Por favor verifica la información.');
+    } else if (error?.message) {
+      this.showErrorAlert(error.message);
+    } else {
+      this.showErrorAlert('Error al iniciar sesión. Inténtalo de nuevo.');
+    }
   }
 
   private showErrorAlert(message: string): void {
@@ -156,12 +171,22 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private showSuccessAlert(message: string): void {
-    console.log('Login exitoso:', message);
+    this.successMessage = message;
+    this.showSuccess = true;
+    
+    setTimeout(() => {
+      this.clearSuccess();
+    }, 3000);
   }
 
   private clearError(): void {
     this.errorMessage = '';
     this.showError = false;
+  }
+
+  private clearSuccess(): void {
+    this.successMessage = '';
+    this.showSuccess = false;
   }
 
   onKeyPress(event: KeyboardEvent): void {
@@ -174,6 +199,9 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
     if (this.showError) {
       this.clearError();
     }
+    if (this.showSuccess) {
+      this.clearSuccess();
+    }
   }
 
   goToRegister(event: Event): void {
@@ -181,33 +209,31 @@ export class Login implements OnInit, AfterViewInit, OnDestroy {
     this.router.navigate(['/registro']);
   }
 
-  validateUsername(): boolean {
-    return this.nombreUsuario.trim().length >= 3;
+  validateEmail(): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(this.email);
   }
 
   validatePassword(): boolean {
-    return this.contrasena.length >= 4;
+    return this.password.length >= 1;
   }
 
   isFormValid(): boolean {
-    // Permitir siempre el envío del formulario sin validaciones
-    return true;
-    
-    // Código original comentado:
-    // return this.validateUsername() && this.validatePassword() && !this.isLoading;
+    return this.validateEmail() && this.validatePassword() && !this.isLoading;
   }
 
+  // Método para login rápido (solo desarrollo)
   quickLogin(role: string): void {
     const users = {
-      'paciente': { user: 'paciente', pass: '1234' },
-      'doctor': { user: 'doctor', pass: '1234' },
-      'admin': { user: 'admin', pass: '1234' }
+      'paciente': { email: 'paciente@correo.com', password: 'Password123' },
+      'medico': { email: 'medico@correo.com', password: 'Password123' },
+      'admin': { email: 'admin@correo.com', password: 'Password123' }
     };
 
     const selectedUser = users[role as keyof typeof users];
     if (selectedUser) {
-      this.nombreUsuario = selectedUser.user;
-      this.contrasena = selectedUser.pass;
+      this.email = selectedUser.email;
+      this.password = selectedUser.password;
       setTimeout(() => this.onLogin(), 100);
     }
   }

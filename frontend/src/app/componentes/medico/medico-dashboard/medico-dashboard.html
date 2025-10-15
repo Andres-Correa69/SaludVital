@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Médico - Salud Vital</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <app-navbar-medico></app-navbar-medico>
+
+  <!-- Contenido Principal -->
+  <main class="medico-dashboard">
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div class="header-content">
+        <h1 class="page-title">
+          <i class="fas fa-clipboard-list"></i>
+          Gestión de Citas Médicas
+        </h1>
+        <p class="page-subtitle">Bienvenido, Dr. {{medicoActual?.nombre}}</p>
+      </div>
+      <div class="header-stats">
+        <div class="stat-card">
+          <div class="stat-icon pending">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-number">{{citasPendientes.length}}</span>
+            <span class="stat-label">Citas Pendientes</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon completed">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-info">
+            <span class="stat-number">{{citasCompletadas.length}}</span>
+            <span class="stat-label">Citas Completadas</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles de Filtros y Búsqueda -->
+    <div class="filter-controls">
+      <div class="filter-group">
+        <label for="filtroEstado">Filtrar por estado:</label>
+        <select id="filtroEstado" class="filter-select" [(ngModel)]="filtroEstado" (change)="filtrarCitas()">
+          <option value="todas">Todas las Citas</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="confirmada">Confirmadas</option>
+          <option value="completada">Completadas</option>
+          <option value="cancelada">Canceladas</option>
+        </select>
+      </div>
+      
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input 
+          type="text" 
+          placeholder="Buscar por paciente o motivo de consulta..."
+          [(ngModel)]="searchTerm"
+          (input)="filtrarCitas()">
+      </div>
+    </div>
+
+    <!-- Tabla de Citas -->
+    <div class="citas-table-container">
+      <table class="citas-table">
+        <thead>
+          <tr>
+            <th>Paciente</th>
+            <th>Documento</th>
+            <th>Fecha</th>
+            <th>Motivo</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Loading State -->
+          <tr *ngIf="isLoading">
+            <td colspan="6" class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>Cargando citas...</p>
+            </td>
+          </tr>
+
+          <!-- Empty State -->
+          <tr *ngIf="!isLoading && citasFiltradas.length === 0">
+            <td colspan="6" class="empty-state">
+              <i class="fas fa-calendar-times"></i>
+              <h3>No hay citas disponibles</h3>
+              <p>No se encontraron citas con los filtros aplicados</p>
+            </td>
+          </tr>
+
+          <!-- Citas -->
+          <tr *ngFor="let cita of citasFiltradas" class="cita-row">
+            <td class="paciente-info">
+              <div class="paciente-avatar">
+                <i class="fas fa-user"></i>
+              </div>
+              <div class="paciente-details">
+                <strong>{{getPacienteNombre(cita)}}</strong>
+                <small>{{getPacienteEmail(cita)}}</small>
+              </div>
+            </td>
+            <td>{{getPacienteDocumento(cita)}}</td>
+            <td>
+              <div class="fecha-info">
+                <div class="fecha">{{formatearFechaCorta(cita.fecha)}}</div>
+                <div class="hora">{{formatearHora(cita.fecha)}}</div>
+              </div>
+            </td>
+            <td>
+              <div class="motivo-consulta">
+                {{cita.motivo}}
+              </div>
+            </td>
+            <td>
+              <span [class]="'badge ' + getEstadoBadgeClass(cita.estado)">
+                {{getEstadoTexto(cita.estado)}}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <!-- Ver Cita -->
+                <button class="btn btn-info" (click)="verDetallesCita(cita)" title="Ver detalles">
+                  <i class="fas fa-eye"></i>
+                  Ver
+                </button>
+                
+                <!-- Completar Cita -->
+                <button 
+                  class="btn btn-success" 
+                  (click)="seleccionarCita(cita)" 
+                  *ngIf="cita.estado !== 'completada' && cita.estado !== 'cancelada'"
+                  title="Completar cita">
+                  <i class="fas fa-check"></i>
+                  Completar
+                </button>
+                
+                <!-- Ver Resultados -->
+                <button 
+                  class="btn btn-primary" 
+                  (click)="verResultadosCita(cita)" 
+                  *ngIf="cita.estado === 'completada'"
+                  title="Ver resultados">
+                  <i class="fas fa-file-medical"></i>
+                  Resultados
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal de Detalles de Cita -->
+  <div *ngIf="mostrarModalDetalles && citaSeleccionada" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-info-circle"></i>
+          Detalles de la Cita
+        </h2>
+        <button class="modal-close" (click)="cerrarModalDetalles()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-content">
+        <div class="detalles-cita">
+          <div class="detalle-header">
+            <div class="cita-estado-modal" [class]="'status-' + citaSeleccionada.estado">
+              <i class="fas" [class]="getEstadoIcon(citaSeleccionada.estado)"></i>
+              {{getEstadoTexto(citaSeleccionada.estado)}}
+            </div>
+          </div>
+          
+          <div class="detalles-grid">
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-user"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Paciente</span>
+                <span class="detalle-valor">{{getPacienteNombre(citaSeleccionada)}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-id-card"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Documento</span>
+                <span class="detalle-valor">{{getPacienteDocumento(citaSeleccionada)}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-calendar"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Fecha y Hora</span>
+                <span class="detalle-valor">{{formatearFechaHora(citaSeleccionada.fecha)}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-stethoscope"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Motivo de Consulta</span>
+                <span class="detalle-valor">{{citaSeleccionada.motivo}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-phone"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Teléfono</span>
+                <span class="detalle-valor">{{getPacienteTelefono(citaSeleccionada)}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Email</span>
+                <span class="detalle-valor">{{getPacienteEmail(citaSeleccionada)}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-map-marker-alt"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Dirección</span>
+                <span class="detalle-valor">{{getPacienteDireccion(citaSeleccionada)}}</span>
+              </div>
+            </div>
+            
+            <div class="detalle-item">
+              <div class="detalle-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="detalle-content">
+                <span class="detalle-label">Fecha de Creación</span>
+                <span class="detalle-valor">{{formatearFechaHora(citaSeleccionada.createdAt)}}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="detalle-actions">
+            <button class="btn btn-secondary" (click)="cerrarModalDetalles()">
+              Cerrar
+            </button>
+            <button 
+              class="btn btn-success" 
+              (click)="seleccionarCita(citaSeleccionada)" 
+              *ngIf="citaSeleccionada.estado !== 'completada' && citaSeleccionada.estado !== 'cancelada'">
+              <i class="fas fa-check"></i>
+              Completar Cita
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Resultados -->
+  <div *ngIf="isEditingResultado && citaSeleccionada" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-file-medical"></i>
+          Registrar Resultado de Consulta
+        </h2>
+        <button class="modal-close" (click)="cerrarEditor()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-content">
+        <!-- Información de la Cita -->
+        <div class="cita-summary">
+          <h4>Información de la Cita</h4>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <strong>Paciente:</strong> {{getPacienteNombre(citaSeleccionada)}}
+            </div>
+            <div class="summary-item">
+              <strong>Documento:</strong> {{getPacienteDocumento(citaSeleccionada)}}
+            </div>
+            <div class="summary-item">
+              <strong>Fecha:</strong> {{formatearFecha(citaSeleccionada.fecha)}}
+            </div>
+            <div class="summary-item">
+              <strong>Teléfono:</strong> {{getPacienteTelefono(citaSeleccionada)}}
+            </div>
+            <div class="summary-item">
+              <strong>Email:</strong> {{getPacienteEmail(citaSeleccionada)}}
+            </div>
+            <div class="summary-item">
+              <strong>Dirección:</strong> {{getPacienteDireccion(citaSeleccionada)}}
+            </div>
+          </div>
+          <div class="motivo-consulta">
+            <strong>Motivo de consulta:</strong> {{citaSeleccionada.motivo}}
+          </div>
+        </div>
+
+        <!-- Formulario de Resultados -->
+        <form class="resultado-form" (ngSubmit)="guardarResultado()">
+          <!-- Tipo de Resultado -->
+          <div class="form-section">
+            <h4 class="section-title">
+              <i class="fas fa-tag"></i>
+              Tipo de Resultado
+            </h4>
+            <div class="input-group">
+              <select [(ngModel)]="resultadoData.tipo" name="tipo" required>
+                <option value="consulta">Consulta General</option>
+                <option value="seguimiento">Seguimiento</option>
+                <option value="emergencia">Emergencia</option>
+                <option value="control">Control</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Fecha del Resultado -->
+          <div class="form-section">
+            <h4 class="section-title">
+              <i class="fas fa-calendar-day"></i>
+              Fecha del Resultado
+            </h4>
+            <div class="input-group">
+              <input 
+                type="date" 
+                [(ngModel)]="resultadoData.fechaResultado" 
+                name="fechaResultado"
+                required>
+            </div>
+          </div>
+
+          <!-- Descripción/Diagnóstico -->
+          <div class="form-section">
+            <h4 class="section-title">
+              <i class="fas fa-diagnoses"></i>
+              Diagnóstico y Descripción
+            </h4>
+            <div class="input-group">
+              <textarea 
+                [(ngModel)]="resultadoData.descripcion" 
+                name="descripcion"
+                rows="5" 
+                placeholder="Describa el diagnóstico, hallazgos, tratamiento recomendado, medicamentos recetados, observaciones y recomendaciones..."
+                required></textarea>
+              <div class="input-hint">
+                Incluya: Diagnóstico, tratamiento, medicamentos, observaciones y recomendaciones
+              </div>
+            </div>
+          </div>
+
+          <!-- Archivo URL (opcional) -->
+          <div class="form-section">
+            <h4 class="section-title">
+              <i class="fas fa-file-upload"></i>
+              Enlace a Archivo Adjunto (Opcional)
+            </h4>
+            <div class="input-group">
+              <input 
+                type="url" 
+                [(ngModel)]="resultadoData.archivoUrl" 
+                name="archivoUrl"
+                placeholder="https://ejemplo.com/archivo.pdf">
+              <div class="input-hint">
+                Enlace a exámenes, imágenes o documentos relacionados
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción -->
+          <div class="form-actions">
+            <button 
+              type="button" 
+              class="btn btn-secondary"
+              (click)="cerrarEditor()">
+              <i class="fas fa-times"></i>
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              class="btn btn-primary"
+              [disabled]="isLoading || !resultadoData.descripcion">
+              <i class="fas fa-save"></i>
+              {{isLoading ? 'Guardando...' : 'Completar Cita y Guardar Resultado'}}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Ver Resultados -->
+  <div *ngIf="mostrarResultados && citaSeleccionada" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-file-medical-alt"></i>
+          Resultados de la Consulta
+        </h2>
+        <button class="modal-close" (click)="cerrarResultados()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-content">
+        <div class="resultados-cita">
+          <div class="resultado-info">
+            <h4>Consulta realizada el {{formatearFecha(citaSeleccionada.fecha)}}</h4>
+            <p><strong>Paciente:</strong> {{getPacienteNombre(citaSeleccionada)}}</p>
+            <p><strong>Motivo:</strong> {{citaSeleccionada.motivo}}</p>
+          </div>
+          
+          <div class="resultado-content" *ngIf="resultadoCita">
+            <div class="resultado-section">
+              <h5><i class="fas fa-diagnoses"></i> Diagnóstico</h5>
+              <p>{{resultadoCita.descripcion}}</p>
+            </div>
+            
+            <div class="resultado-section">
+              <h5><i class="fas fa-tag"></i> Tipo de Consulta</h5>
+              <p>{{getTipoConsultaTexto(resultadoCita.tipo)}}</p>
+            </div>
+            
+            <div class="resultado-section">
+              <h5><i class="fas fa-calendar-day"></i> Fecha del Resultado</h5>
+              <p>{{formatearFecha(resultadoCita.fechaResultado)}}</p>
+            </div>
+            
+            <div class="resultado-section" *ngIf="resultadoCita.archivoUrl">
+              <h5><i class="fas fa-file-pdf"></i> Archivo Adjunto</h5>
+              <a [href]="resultadoCita.archivoUrl" target="_blank" class="btn btn-primary">
+                <i class="fas fa-download"></i>
+                Ver Documento
+              </a>
+            </div>
+          </div>
+          
+          <div class="no-resultados" *ngIf="!resultadoCita">
+            <i class="fas fa-file-medical"></i>
+            <h4>No hay resultados registrados</h4>
+            <p>No se han registrado resultados para esta consulta.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <p>Procesando...</p>
+  </div>
+</body>
+</html>
