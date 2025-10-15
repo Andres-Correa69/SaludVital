@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 require('dotenv').config();
 
@@ -10,15 +11,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rutas básicas
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Servidor SaludVital funcionando correctamente',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
-  });
-});
+// Servir archivos estáticos de Angular
+app.use(express.static(path.join(__dirname, '../frontend/dist/frontend')));
 
+// Rutas de la API
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK',
@@ -27,25 +23,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Ruta de ejemplo para la API
 app.get('/api/usuarios', (req, res) => {
   res.json([
     { id: 1, nombre: 'Usuario Ejemplo', email: 'usuario@ejemplo.com' }
   ]);
 });
 
-// Manejo de errores 404
-app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Ruta no encontrada',
-    message: `La ruta ${req.originalUrl} no existe`
-  });
+// Ruta catch-all para servir la app de Angular
+app.get(/(.*)/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/frontend/index.html'));
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
 });
 
 module.exports = app;
