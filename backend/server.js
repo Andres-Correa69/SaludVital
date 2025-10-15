@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -35,6 +36,9 @@ connectToDatabase().catch((err) => {
   process.exit(1);
 });
 
+// Servir archivos estáticos de Angular
+app.use(express.static(path.join(__dirname, '../frontend/dist/frontend')));
+
 // Rutas básicas
 app.get('/', (req, res) => {
   res.json({
@@ -45,6 +49,7 @@ app.get('/', (req, res) => {
   });
 });
 
+// Rutas de la API
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -60,12 +65,9 @@ app.use('/api/citas', citasRoutes);
 app.use('/api/resultados', resultadosRoutes);
 app.use('/api/alertas', alertasRoutes);
 
-// 404
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Ruta no encontrada',
-    message: `La ruta ${req.originalUrl} no existe`
-  });
+// Ruta catch-all para servir la app de Angular
+app.get(/(.*)/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/frontend/index.html'));
 });
 
 // Error handler
@@ -81,7 +83,6 @@ app.use((err, req, res, next) => {
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
 });
 
 module.exports = app;
