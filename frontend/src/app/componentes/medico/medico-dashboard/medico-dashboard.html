@@ -98,17 +98,24 @@
           </tr>
 
           <!-- Citas -->
-          <tr *ngFor="let cita of citasFiltradas" class="cita-row">
+          <tr *ngFor="let cita of citasFiltradas" class="cita-row" [class.no-paciente]="!tienePacienteAsignado(cita)">
             <td class="paciente-info">
-              <div class="paciente-avatar">
-                <i class="fas fa-user"></i>
+              <div class="paciente-avatar" [class.no-paciente]="!tienePacienteAsignado(cita)">
+                <i class="fas" [class]="tienePacienteAsignado(cita) ? 'fa-user' : 'fa-user-slash'"></i>
               </div>
               <div class="paciente-details">
-                <strong>{{getPacienteNombre(cita)}}</strong>
-                <small>{{getPacienteEmail(cita)}}</small>
+                <strong [class.no-paciente]="!tienePacienteAsignado(cita)">
+                  {{getPacienteNombre(cita)}}
+                </strong>
+                <small *ngIf="tienePacienteAsignado(cita)">{{getPacienteEmail(cita)}}</small>
+                <small *ngIf="!tienePacienteAsignado(cita)" class="warning-text">⚠️ Sin paciente asignado</small>
               </div>
             </td>
-            <td>{{getPacienteDocumento(cita)}}</td>
+            <td>
+              <span [class.no-paciente]="!tienePacienteAsignado(cita)">
+                {{getPacienteDocumento(cita)}}
+              </span>
+            </td>
             <td>
               <div class="fecha-info">
                 <div class="fecha">{{formatearFechaCorta(cita.fecha)}}</div>
@@ -138,7 +145,8 @@
                   class="btn btn-success" 
                   (click)="seleccionarCita(cita)" 
                   *ngIf="cita.estado !== 'completada' && cita.estado !== 'cancelada'"
-                  title="Completar cita">
+                  [disabled]="!tienePacienteAsignado(cita)"
+                  [title]="tienePacienteAsignado(cita) ? 'Completar cita' : 'No se puede completar cita sin paciente asignado'">
                   <i class="fas fa-check"></i>
                   Completar
                 </button>
@@ -148,7 +156,8 @@
                   class="btn btn-primary" 
                   (click)="verResultadosCita(cita)" 
                   *ngIf="cita.estado === 'completada'"
-                  title="Ver resultados">
+                  [disabled]="!tienePacienteAsignado(cita)"
+                  [title]="tienePacienteAsignado(cita) ? 'Ver resultados' : 'No hay resultados disponibles'">
                   <i class="fas fa-file-medical"></i>
                   Resultados
                 </button>
@@ -175,6 +184,12 @@
 
       <div class="modal-content">
         <div class="detalles-cita">
+          <!-- Alerta cuando no hay paciente asignado -->
+          <div *ngIf="!tienePacienteAsignado(citaSeleccionada)" class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Advertencia:</strong> Esta cita no tiene paciente asignado. Algunas funciones estarán limitadas.
+          </div>
+
           <div class="detalle-header">
             <div class="cita-estado-modal" [class]="'status-' + citaSeleccionada.estado">
               <i class="fas" [class]="getEstadoIcon(citaSeleccionada.estado)"></i>
@@ -184,12 +199,14 @@
           
           <div class="detalles-grid">
             <div class="detalle-item">
-              <div class="detalle-icon">
-                <i class="fas fa-user"></i>
+              <div class="detalle-icon" [class.no-paciente]="!tienePacienteAsignado(citaSeleccionada)">
+                <i class="fas" [class]="tienePacienteAsignado(citaSeleccionada) ? 'fa-user' : 'fa-user-slash'"></i>
               </div>
               <div class="detalle-content">
                 <span class="detalle-label">Paciente</span>
-                <span class="detalle-valor">{{getPacienteNombre(citaSeleccionada)}}</span>
+                <span class="detalle-valor" [class.no-paciente]="!tienePacienteAsignado(citaSeleccionada)">
+                  {{getPacienteNombre(citaSeleccionada)}}
+                </span>
               </div>
             </div>
             
@@ -223,35 +240,58 @@
               </div>
             </div>
             
-            <div class="detalle-item">
-              <div class="detalle-icon">
-                <i class="fas fa-phone"></i>
+            <!-- Información adicional solo si hay paciente asignado -->
+            <ng-container *ngIf="tienePacienteAsignado(citaSeleccionada)">
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-phone"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Teléfono</span>
+                  <span class="detalle-valor">{{getPacienteTelefono(citaSeleccionada)}}</span>
+                </div>
               </div>
-              <div class="detalle-content">
-                <span class="detalle-label">Teléfono</span>
-                <span class="detalle-valor">{{getPacienteTelefono(citaSeleccionada)}}</span>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-envelope"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Email</span>
+                  <span class="detalle-valor">{{getPacienteEmail(citaSeleccionada)}}</span>
+                </div>
               </div>
-            </div>
-            
-            <div class="detalle-item">
-              <div class="detalle-icon">
-                <i class="fas fa-envelope"></i>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-map-marker-alt"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Dirección</span>
+                  <span class="detalle-valor">{{getPacienteDireccion(citaSeleccionada)}}</span>
+                </div>
               </div>
-              <div class="detalle-content">
-                <span class="detalle-label">Email</span>
-                <span class="detalle-valor">{{getPacienteEmail(citaSeleccionada)}}</span>
+              
+              <div class="detalle-item">
+                <div class="detalle-icon">
+                  <i class="fas fa-birthday-cake"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Fecha de Nacimiento</span>
+                  <span class="detalle-valor">{{getPacienteFechaNacimiento(citaSeleccionada)}}</span>
+                </div>
               </div>
-            </div>
-            
-            <div class="detalle-item">
-              <div class="detalle-icon">
-                <i class="fas fa-map-marker-alt"></i>
+              
+              <div class="detalle-item" *ngIf="getPacienteGrupoSanguineo(citaSeleccionada) !== 'No disponible'">
+                <div class="detalle-icon">
+                  <i class="fas fa-tint"></i>
+                </div>
+                <div class="detalle-content">
+                  <span class="detalle-label">Grupo Sanguíneo</span>
+                  <span class="detalle-valor">{{getPacienteGrupoSanguineo(citaSeleccionada)}}</span>
+                </div>
               </div>
-              <div class="detalle-content">
-                <span class="detalle-label">Dirección</span>
-                <span class="detalle-valor">{{getPacienteDireccion(citaSeleccionada)}}</span>
-              </div>
-            </div>
+            </ng-container>
             
             <div class="detalle-item">
               <div class="detalle-icon">
@@ -271,7 +311,9 @@
             <button 
               class="btn btn-success" 
               (click)="seleccionarCita(citaSeleccionada)" 
-              *ngIf="citaSeleccionada.estado !== 'completada' && citaSeleccionada.estado !== 'cancelada'">
+              *ngIf="citaSeleccionada.estado !== 'completada' && citaSeleccionada.estado !== 'cancelada'"
+              [disabled]="!tienePacienteAsignado(citaSeleccionada)"
+              [title]="tienePacienteAsignado(citaSeleccionada) ? 'Completar cita' : 'No se puede completar cita sin paciente asignado'">
               <i class="fas fa-check"></i>
               Completar Cita
             </button>
@@ -316,6 +358,12 @@
             </div>
             <div class="summary-item">
               <strong>Dirección:</strong> {{getPacienteDireccion(citaSeleccionada)}}
+            </div>
+            <div class="summary-item">
+              <strong>Fecha Nacimiento:</strong> {{getPacienteFechaNacimiento(citaSeleccionada)}}
+            </div>
+            <div class="summary-item" *ngIf="getPacienteGrupoSanguineo(citaSeleccionada) !== 'No disponible'">
+              <strong>Grupo Sanguíneo:</strong> {{getPacienteGrupoSanguineo(citaSeleccionada)}}
             </div>
           </div>
           <div class="motivo-consulta">
@@ -444,7 +492,7 @@
             
             <div class="resultado-section">
               <h5><i class="fas fa-tag"></i> Tipo de Consulta</h5>
-              <p>{{getTipoConsultaTexto(resultadoCita.tipo)}}</p>
+              
             </div>
             
             <div class="resultado-section">

@@ -6,6 +6,7 @@ import { Navbar } from '../navbar/navbar';
 import { CitaService } from '../../servicios/cita.service';
 import { AuthService } from '../../servicios/auth.service';
 import { Cita } from '../../modelos/cita.models';
+import { Paciente } from '../../modelos/paciente.models';
 import { User } from '../../modelos/auth.models';
 
 interface Recordatorio {
@@ -119,17 +120,27 @@ export class ListaCitas implements OnInit {
 
   // Datos de ejemplo para desarrollo
   private cargarCitasDeEjemplo(): void {
+    const pacienteEjemplo: Paciente = {
+      _id: this.usuarioActual?.id || '',
+      user: {
+        _id: this.usuarioActual?.id || '',
+        nombre: this.usuarioActual?.nombre || 'Usuario',
+        email: this.usuarioActual?.email || 'usuario@email.com',
+        rol: 'paciente'
+      },
+      documento: '123456789',
+      telefono: '3001234567',
+      direccion: 'Calle 123 #45-67',
+      fechaNacimiento: '1990-01-01',
+      grupoSanguineo: 'O+',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
     this.citas = [
       {
         _id: '1',
-        paciente: {
-          _id: this.usuarioActual?.id || '',
-          documento: '123456789',
-          user: {
-            nombre: this.usuarioActual?.nombre || 'Usuario',
-            email: this.usuarioActual?.email || 'usuario@email.com'
-          }
-        },
+        paciente: pacienteEjemplo,
         fecha: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 días en el futuro
         motivo: 'Consulta general por dolor de cabeza persistente',
         estado: 'confirmada',
@@ -139,14 +150,7 @@ export class ListaCitas implements OnInit {
       },
       {
         _id: '2',
-        paciente: {
-          _id: this.usuarioActual?.id || '',
-          documento: '123456789',
-          user: {
-            nombre: this.usuarioActual?.nombre || 'Usuario',
-            email: this.usuarioActual?.email || 'usuario@email.com'
-          }
-        },
+        paciente: pacienteEjemplo,
         fecha: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 días en el futuro
         motivo: 'Control de rutina',
         estado: 'pendiente',
@@ -156,14 +160,7 @@ export class ListaCitas implements OnInit {
       },
       {
         _id: '3',
-        paciente: {
-          _id: this.usuarioActual?.id || '',
-          documento: '123456789',
-          user: {
-            nombre: this.usuarioActual?.nombre || 'Usuario',
-            email: this.usuarioActual?.email || 'usuario@email.com'
-          }
-        },
+        paciente: pacienteEjemplo,
         fecha: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 días en el pasado
         motivo: 'Consulta de seguimiento',
         estado: 'completada',
@@ -213,6 +210,27 @@ export class ListaCitas implements OnInit {
   get proximaCita(): Cita | null {
     const proximas = this.citasProximas;
     return proximas.length > 0 ? proximas[0] : null;
+  }
+
+  // Métodos para obtener información del paciente
+  getPacienteNombre(cita: Cita): string {
+    return cita.paciente.user.nombre || 'No disponible';
+  }
+
+  getPacienteEmail(cita: Cita): string {
+    return cita.paciente.user.email || 'No disponible';
+  }
+
+  getPacienteDocumento(cita: Cita): string {
+    return cita.paciente.documento || 'No disponible';
+  }
+
+  getPacienteTelefono(cita: Cita): string {
+    return cita.paciente.telefono || 'No disponible';
+  }
+
+  getPacienteDireccion(cita: Cita): string {
+    return cita.paciente.direccion || 'No disponible';
   }
 
   // Utilidades de formato

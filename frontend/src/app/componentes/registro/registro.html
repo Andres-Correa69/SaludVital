@@ -112,12 +112,112 @@
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Información adicional según el rol seleccionado -->
-            <div *ngIf="rol === 'medico'" class="role-additional-info">
-              <div class="info-card">
-                <i class="fas fa-info-circle"></i>
-                <p>Como médico, podrás crear tu perfil profesional después del registro</p>
+          <!-- Información Específica del Paciente -->
+          <div *ngIf="rol === 'paciente'" class="form-section patient-info">
+            <h3 class="section-title">
+              <i class="fas fa-file-medical"></i>
+              Información Médica
+            </h3>
+            
+            <div class="input-row">
+              <div class="input-group">
+                <input 
+                  type="text" 
+                  id="documento" 
+                  name="documento" 
+                  required 
+                  [(ngModel)]="documento"
+                  (input)="onInputChange()"
+                  placeholder=" "
+                  [class.invalid]="documento && !validateDocumento()"
+                  [disabled]="isLoading">
+                <label for="documento">Documento de Identidad</label>
+                <div *ngIf="documento && !validateDocumento()" class="validation-hint">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Mínimo 6 caracteres
+                </div>
+              </div>
+
+              <div class="input-group">
+                <input 
+                  type="tel" 
+                  id="telefono" 
+                  name="telefono" 
+                  required 
+                  [(ngModel)]="telefono"
+                  (input)="onInputChange()"
+                  placeholder=" "
+                  [class.invalid]="telefono && !validateTelefono()"
+                  [disabled]="isLoading">
+                <label for="telefono">Teléfono</label>
+                <div *ngIf="telefono && !validateTelefono()" class="validation-hint">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Mínimo 8 caracteres
+                </div>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <input 
+                type="text" 
+                id="direccion" 
+                name="direccion" 
+                required 
+                [(ngModel)]="direccion"
+                (input)="onInputChange()"
+                placeholder=" "
+                [class.invalid]="direccion && !validateDireccion()"
+                [disabled]="isLoading">
+              <label for="direccion">Dirección Completa</label>
+              <div *ngIf="direccion && !validateDireccion()" class="validation-hint">
+                <i class="fas fa-exclamation-circle"></i>
+                Mínimo 10 caracteres
+              </div>
+            </div>
+
+            <div class="input-row">
+              <div class="input-group">
+                <input 
+                  type="date" 
+                  id="fechaNacimiento" 
+                  name="fechaNacimiento" 
+                  required 
+                  [(ngModel)]="fechaNacimiento"
+                  (input)="onInputChange()"
+                  placeholder=" "
+                  [class.invalid]="fechaNacimiento && !validateFechaNacimiento()"
+                  [disabled]="isLoading"
+                  [max]="getMaxDate()">
+                <label for="fechaNacimiento">Fecha de Nacimiento</label>
+                <div *ngIf="fechaNacimiento" class="validation-hint info">
+                  <i class="fas fa-info-circle"></i>
+                  Edad: {{ calcularEdad() }} años
+                </div>
+                <div *ngIf="fechaNacimiento && !validateFechaNacimiento()" class="validation-hint">
+                  <i class="fas fa-exclamation-circle"></i>
+                  Fecha inválida
+                </div>
+              </div>
+
+              <div class="input-group">
+                <select 
+                  id="grupoSanguineo" 
+                  name="grupoSanguineo" 
+                  [(ngModel)]="grupoSanguineo"
+                  [disabled]="isLoading">
+                  <option value="">Seleccionar grupo sanguíneo</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+                <label for="grupoSanguineo">Grupo Sanguíneo (Opcional)</label>
               </div>
             </div>
           </div>
@@ -177,26 +277,26 @@
           </div>
 
           <!-- Términos y Condiciones -->
-<div class="terms-section">
-  <div class="checkbox-group">
-    <input 
-      type="checkbox" 
-      id="aceptoTerminos" 
-      name="aceptoTerminos" 
-      required 
-      [(ngModel)]="aceptoTerminos"
-      [disabled]="isLoading">
-    <label for="aceptoTerminos" class="checkbox-label">
-      <div class="checkbox-custom">
-        <i class="fas fa-check"></i>
-      </div>
-      <span class="checkbox-text">
-        Acepto los <a href="#" (click)="openTerms($event)">Términos y Condiciones</a> y la 
-        <a href="#" (click)="openPrivacy($event)">Política de Privacidad</a>
-      </span>
-    </label>
-  </div>
-</div>
+          <div class="terms-section">
+            <div class="checkbox-group">
+              <input 
+                type="checkbox" 
+                id="aceptoTerminos" 
+                name="aceptoTerminos" 
+                required 
+                [(ngModel)]="aceptoTerminos"
+                [disabled]="isLoading">
+              <label for="aceptoTerminos" class="checkbox-label">
+                <div class="checkbox-custom">
+                  <i class="fas fa-check"></i>
+                </div>
+                <span class="checkbox-text">
+                  Acepto los <a href="#" (click)="openTerms($event)">Términos y Condiciones</a> y la 
+                  <a href="#" (click)="openPrivacy($event)">Política de Privacidad</a>
+                </span>
+              </label>
+            </div>
+          </div>
   
           <button 
             type="submit" 

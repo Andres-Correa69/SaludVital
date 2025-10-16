@@ -10,10 +10,33 @@ async function crearCita(req, res) {
 }
 
 async function listarCitas(req, res) {
-  const filtro = {};
-  if (req.query.paciente) filtro.paciente = req.query.paciente;
-  const citas = await Cita.find(filtro).populate('paciente');
-  return res.json(citas);
+  try {
+    console.log('🔍 listarCitas llamado');
+    console.log('Query parameters:', req.query);
+    
+    const filtro = {};
+    
+    if (req.query.paciente && req.query.paciente.trim() !== '') {
+      filtro.paciente = req.query.paciente;
+    }
+    
+    console.log('Filtro aplicado:', filtro);
+    
+    // Contar total de citas en la BD
+    const totalCitas = await Cita.countDocuments();
+    console.log(`📊 Total de citas en BD: ${totalCitas}`);
+    
+    const citas = await Cita.find(filtro).populate('paciente');
+    
+    console.log(`✅ Citas encontradas con filtro: ${citas.length}`);
+    console.log('IDs de citas encontradas:', citas.map(c => c._id));
+    
+    return res.json(citas);
+    
+  } catch (error) {
+    console.error('❌ Error en listarCitas:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
 }
 
 async function obtenerCita(req, res) {

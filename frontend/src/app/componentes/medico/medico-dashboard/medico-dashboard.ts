@@ -1,15 +1,18 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
-import { AuthService } from '../../../servicios/auth.service';
+import { Subject, takeUntil } from 'rxjs';
 import { CitaService } from '../../../servicios/cita.service';
-import { PacienteService } from '../../../servicios/paciente.service';
-import { ResultadoService } from '../../../servicios/resultado.service';
-import { Cita, CitaDto } from '../../../modelos/cita.models';
-import { ResultadoDto, Resultado } from '../../../modelos/resultado.models';
+import { AuthService } from '../../../servicios/auth.service';
+import { Cita } from '../../../modelos/cita.models';
 import { NavbarMedicoComponent } from '../navbar-medico/navbar-medico';
+
+interface ResultadoData {
+  tipo: string;
+  fechaResultado: string;
+  descripcion: string;
+  archivoUrl: string;
+}
 
 @Component({
   selector: 'app-medico-dashboard',
@@ -18,113 +21,331 @@ import { NavbarMedicoComponent } from '../navbar-medico/navbar-medico';
   templateUrl: './medico-dashboard.html',
   styleUrls: ['./medico-dashboard.css']
 })
-export class MedicoDashboardComponent implements OnInit, OnDestroy {
-  private authService = inject(AuthService);
+export class MedicoDashboard implements OnInit, OnDestroy {
   private citaService = inject(CitaService);
-  private pacienteService = inject(PacienteService);
-  private resultadoService = inject(ResultadoService);
-  private router = inject(Router);
+  private authService = inject(AuthService);
+  private destroy$ = new Subject<void>();
 
-  // Datos del médico
+  // Estado de carga
+  isLoading = false;
+
+  // Datos del médico actual
   medicoActual: any;
-  
+
   // Citas
+  todasLasCitas: Cita[] = [];
+  citasFiltradas: Cita[] = [];
   citasPendientes: Cita[] = [];
   citasCompletadas: Cita[] = [];
-  citasFiltradas: Cita[] = [];
-  todasLasCitas: Cita[] = [];
-  
-  // Estados y filtros
-  isLoading: boolean = false;
+
+  // Filtros y búsqueda
   filtroEstado: string = 'todas';
   searchTerm: string = '';
-  
+
   // Modales
-  mostrarModalDetalles: boolean = false;
-  mostrarResultados: boolean = false;
-  
-  // Cita seleccionada
+  mostrarModalDetalles = false;
+  isEditingResultado = false;
+  mostrarResultados = false;
   citaSeleccionada: Cita | null = null;
-  isEditingResultado: boolean = false;
-  resultadoCita: Resultado | null = null;
-  
-  // Formulario de resultados
-  resultadoData: ResultadoDto = {
-    paciente: '',
+  resultadoCita: any = null;
+
+  // Datos del formulario de resultados
+  resultadoData: ResultadoData = {
     tipo: 'consulta',
-    descripcion: '',
     fechaResultado: new Date().toISOString().split('T')[0],
+    descripcion: '',
     archivoUrl: ''
   };
 
-  private subscriptions: Subscription[] = [];
-
-  ngOnInit() {
-    this.medicoActual = this.authService.getCurrentUser();
+  ngOnInit(): void {
+    this.obtenerMedicoActual();
     this.cargarCitas();
   }
 
-  ngOnDestroy() {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private obtenerMedicoActual(): void {
+    this.medicoActual = this.authService.getCurrentUser();
+    console.log('👨‍⚕️ Médico actual:', this.medicoActual);
   }
 
   cargarCitas(): void {
     this.isLoading = true;
     
-    const subscription = this.citaService.listarCitas().subscribe({
-      next: (citas: Cita[]) => {
-        // Filtrar citas del médico actual - manejar diferentes estructuras de médico
-        this.todasLasCitas = citas.filter(cita => {
-          let medicoId: string | undefined;
-          if (typeof cita.medico === 'string') {
-            medicoId = cita.medico;
-          } else if (cita.medico && typeof cita.medico === 'object' && '_id' in cita.medico) {
-            medicoId = (cita.medico as { _id: string })._id;
-          }
-          return medicoId === this.medicoActual?.id || medicoId === this.medicoActual?._id;
-        });
-        
-        this.citasPendientes = this.todasLasCitas.filter(cita => 
-          cita.estado === 'pendiente' || cita.estado === 'confirmada'
-        );
-        
-        this.citasCompletadas = this.todasLasCitas.filter(cita => 
-          cita.estado === 'completada'
-        );
-        
-        this.citasFiltradas = [...this.todasLasCitas];
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error cargando citas:', error);
-        this.isLoading = false;
-      }
-    });
-    
-    this.subscriptions.push(subscription);
+    this.citaService.listarCitas()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (citas) => {
+          console.log('📋 Citas recibidas:', citas);
+          console.log('🔍 Análisis de pacientes en citas:');
+          
+          citas.forEach((cita, index) => {
+            console.log(`Cita ${index}:`, {
+              id: cita._id,
+              tienePaciente: !!cita.paciente,
+              paciente: cita.paciente,
+              motivo: cita.motivo
+            });
+          });
+
+          this.todasLasCitas = citas;
+          this.actualizarEstadisticas();
+          this.filtrarCitas();
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('Error al cargar citas:', error);
+          this.isLoading = false;
+          alert('Error al cargar las citas. Por favor, intente nuevamente.');
+        }
+      });
+  }
+
+  actualizarEstadisticas(): void {
+    this.citasPendientes = this.todasLasCitas.filter(
+      c => c.estado === 'pendiente' || c.estado === 'confirmada'
+    );
+    this.citasCompletadas = this.todasLasCitas.filter(
+      c => c.estado === 'completada'
+    );
   }
 
   filtrarCitas(): void {
     let citasFiltradas = [...this.todasLasCitas];
 
-    // Aplicar filtro por estado
+    // Filtrar por estado
     if (this.filtroEstado !== 'todas') {
-      citasFiltradas = citasFiltradas.filter(cita => cita.estado === this.filtroEstado);
-    }
-
-    // Aplicar filtro por búsqueda
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
-      citasFiltradas = citasFiltradas.filter(cita =>
-        this.getPacienteNombre(cita).toLowerCase().includes(term) ||
-        cita.motivo?.toLowerCase().includes(term) ||
-        this.getPacienteDocumento(cita).toLowerCase().includes(term)
+      citasFiltradas = citasFiltradas.filter(
+        cita => cita.estado === this.filtroEstado
       );
     }
+
+    // Filtrar por búsqueda
+    if (this.searchTerm.trim()) {
+      const termino = this.searchTerm.toLowerCase().trim();
+      citasFiltradas = citasFiltradas.filter(cita => {
+        const nombrePaciente = this.getPacienteNombre(cita).toLowerCase();
+        const motivo = cita.motivo.toLowerCase();
+        const documento = this.getPacienteDocumento(cita).toLowerCase();
+        
+        return nombrePaciente.includes(termino) || 
+               motivo.includes(termino) || 
+               documento.includes(termino);
+      });
+    }
+
+    // Ordenar por fecha (más recientes primero)
+    citasFiltradas.sort((a, b) => 
+      new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+    );
 
     this.citasFiltradas = citasFiltradas;
   }
 
+  // MÉTODOS ACTUALIZADOS PARA MANEJAR PACIENTES NULL
+  getPacienteNombre(cita: Cita): string {
+    if (!cita.paciente) return 'Paciente no asignado';
+    
+    // Manejar diferentes estructuras de datos
+    if (typeof cita.paciente === 'object') {
+      // Si tiene estructura con user
+      if (cita.paciente.user && typeof cita.paciente.user === 'object') {
+        return cita.paciente.user.nombre || 'Paciente';
+      }
+      // Si tiene nombre directamente
+      if ((cita.paciente as any).nombre) {
+        return (cita.paciente as any).nombre;
+      }
+      // Si no tiene nombre pero es objeto, indicar que está incompleto
+      return 'Paciente (sin nombre)';
+    } else if (typeof cita.paciente === 'string') {
+      return 'Paciente (ID: ' + cita.paciente + ')';
+    }
+    return 'Paciente no asignado';
+  }
+
+  getPacienteEmail(cita: Cita): string {
+    if (!cita.paciente) return 'No disponible';
+    
+    if (typeof cita.paciente === 'object') {
+      if (cita.paciente.user && typeof cita.paciente.user === 'object') {
+        return cita.paciente.user.email || 'No disponible';
+      }
+      if ((cita.paciente as any).email) {
+        return (cita.paciente as any).email;
+      }
+    }
+    return 'No disponible';
+  }
+
+  getPacienteDocumento(cita: Cita): string {
+    if (!cita.paciente) return 'No disponible';
+    
+    if (typeof cita.paciente === 'object') {
+      return cita.paciente.documento || 'No disponible';
+    } else if (typeof cita.paciente === 'string') {
+      return 'Documento no disponible';
+    }
+    return 'No disponible';
+  }
+
+  getPacienteTelefono(cita: Cita): string {
+    if (!cita.paciente) return 'No disponible';
+    
+    if (typeof cita.paciente === 'object') {
+      return cita.paciente.telefono || 'No disponible';
+    }
+    return 'No disponible';
+  }
+
+  getPacienteDireccion(cita: Cita): string {
+    if (!cita.paciente) return 'No disponible';
+    
+    if (typeof cita.paciente === 'object') {
+      return cita.paciente.direccion || 'No disponible';
+    }
+    return 'No disponible';
+  }
+
+  getPacienteFechaNacimiento(cita: Cita): string {
+    if (!cita.paciente) return 'No disponible';
+    
+    if (typeof cita.paciente === 'object') {
+      return cita.paciente.fechaNacimiento 
+        ? this.formatearFecha(cita.paciente.fechaNacimiento)
+        : 'No disponible';
+    }
+    return 'No disponible';
+  }
+
+  getPacienteGrupoSanguineo(cita: Cita): string {
+    if (!cita.paciente) return 'No disponible';
+    
+    if (typeof cita.paciente === 'object') {
+      return cita.paciente.grupoSanguineo || 'No disponible';
+    }
+    return 'No disponible';
+  }
+
+  // Método auxiliar para obtener ID del paciente
+  getPacienteId(cita: Cita): string {
+    if (!cita.paciente) return '';
+    
+    if (typeof cita.paciente === 'string') {
+      return cita.paciente;
+    } else if (typeof cita.paciente === 'object') {
+      return cita.paciente._id || '';
+    }
+    return '';
+  }
+
+  // Método para verificar si una cita tiene paciente asignado
+  tienePacienteAsignado(cita: Cita): boolean {
+    return !!cita.paciente;
+  }
+
+  // Método para obtener información resumida del paciente
+  getInfoPaciente(cita: Cita): string {
+    if (!cita.paciente) return '⚠️ Sin paciente asignado';
+    
+    const nombre = this.getPacienteNombre(cita);
+    const documento = this.getPacienteDocumento(cita);
+    
+    if (documento !== 'No disponible') {
+      return `${nombre} - ${documento}`;
+    }
+    
+    return nombre;
+  }
+
+  // Métodos de formateo de fechas (se mantienen igual)
+  formatearFecha(fecha: string): string {
+    if (!fecha) return 'No disponible';
+    try {
+      const date = new Date(fecha);
+      const opciones: Intl.DateTimeFormatOptions = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      };
+      return date.toLocaleDateString('es-ES', opciones);
+    } catch (error) {
+      return 'Fecha no válida';
+    }
+  }
+
+  formatearFechaCorta(fecha: string): string {
+    if (!fecha) return 'No disponible';
+    try {
+      const date = new Date(fecha);
+      const opciones: Intl.DateTimeFormatOptions = { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      };
+      return date.toLocaleDateString('es-ES', opciones);
+    } catch (error) {
+      return 'Fecha no válida';
+    }
+  }
+
+  formatearHora(fecha: string): string {
+    if (!fecha) return 'No disponible';
+    try {
+      const date = new Date(fecha);
+      return date.toLocaleTimeString('es-ES', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    } catch (error) {
+      return 'Hora no válida';
+    }
+  }
+
+  formatearFechaHora(fecha: string): string {
+    if (!fecha) return 'No disponible';
+    try {
+      return `${this.formatearFecha(fecha)} a las ${this.formatearHora(fecha)}`;
+    } catch (error) {
+      return 'Fecha/hora no válida';
+    }
+  }
+
+  // Métodos para estados
+  getEstadoTexto(estado: string): string {
+    const estados: { [key: string]: string } = {
+      'pendiente': 'Pendiente',
+      'confirmada': 'Confirmada',
+      'completada': 'Completada',
+      'cancelada': 'Cancelada'
+    };
+    return estados[estado] || estado;
+  }
+
+  getEstadoBadgeClass(estado: string): string {
+    const clases: { [key: string]: string } = {
+      'pendiente': 'badge-pendiente',
+      'confirmada': 'badge-confirmada',
+      'completada': 'badge-completada',
+      'cancelada': 'badge-cancelada'
+    };
+    return clases[estado] || 'badge-pendiente';
+  }
+
+  getEstadoIcon(estado: string): string {
+    const iconos: { [key: string]: string } = {
+      'pendiente': 'fa-clock',
+      'confirmada': 'fa-check-circle',
+      'completada': 'fa-check-double',
+      'cancelada': 'fa-times-circle'
+    };
+    return iconos[estado] || 'fa-question-circle';
+  }
+
+  // Métodos para modales
   verDetallesCita(cita: Cita): void {
     this.citaSeleccionada = cita;
     this.mostrarModalDetalles = true;
@@ -136,15 +357,21 @@ export class MedicoDashboardComponent implements OnInit, OnDestroy {
   }
 
   seleccionarCita(cita: Cita): void {
+    // Solo permitir seleccionar citas que tienen paciente asignado
+    if (!this.tienePacienteAsignado(cita)) {
+      alert('No se puede completar una cita sin paciente asignado');
+      return;
+    }
+
     this.citaSeleccionada = cita;
     this.isEditingResultado = true;
+    this.mostrarModalDetalles = false;
     
-    // Inicializar formulario con datos de la cita
+    // Resetear datos del formulario
     this.resultadoData = {
-      paciente: this.getPacienteId(cita),
       tipo: 'consulta',
-      descripcion: '',
       fechaResultado: new Date().toISOString().split('T')[0],
+      descripcion: '',
       archivoUrl: ''
     };
   }
@@ -153,45 +380,64 @@ export class MedicoDashboardComponent implements OnInit, OnDestroy {
     this.isEditingResultado = false;
     this.citaSeleccionada = null;
     this.resultadoData = {
-      paciente: '',
       tipo: 'consulta',
-      descripcion: '',
       fechaResultado: new Date().toISOString().split('T')[0],
+      descripcion: '',
       archivoUrl: ''
     };
   }
 
-  verResultadosCita(cita: Cita): void {
-    this.citaSeleccionada = cita;
-    this.mostrarResultados = true;
-    
-    // Cargar resultados reales de la cita
+  guardarResultado(): void {
+    if (!this.citaSeleccionada) {
+      alert('No hay cita seleccionada');
+      return;
+    }
+
+    // Verificar que la cita tenga paciente asignado
+    if (!this.tienePacienteAsignado(this.citaSeleccionada)) {
+      alert('No se puede guardar resultado para una cita sin paciente asignado');
+      return;
+    }
+
+    if (!this.resultadoData.descripcion.trim()) {
+      alert('Por favor complete la descripción del resultado');
+      return;
+    }
+
     this.isLoading = true;
-    
-    // Usar filtros para obtener resultados del paciente específico
-    const filtros = { paciente: this.getPacienteId(cita) };
-    
-    const subscription = this.resultadoService.listarResultados(filtros).subscribe({
-      next: (resultados: Resultado[]) => {
-        if (resultados && resultados.length > 0) {
-          // Ordenar por fecha más reciente y tomar el primero
-          resultados.sort((a, b) => 
-            new Date(b.fechaResultado).getTime() - new Date(a.fechaResultado).getTime()
-          );
-          this.resultadoCita = resultados[0];
-        } else {
-          this.resultadoCita = null;
-        }
+
+    // Actualizar el estado de la cita a 'completada'
+    this.citaService.actualizarCita(this.citaSeleccionada._id, {
+      estado: 'completada'
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (citaActualizada) => {
+        console.log('✅ Cita completada:', citaActualizada);
+        
+        alert('Cita completada exitosamente');
         this.isLoading = false;
+        this.cerrarEditor();
+        this.cargarCitas();
       },
       error: (error) => {
-        console.error('Error cargando resultados:', error);
-        this.resultadoCita = null;
+        console.error('❌ Error al completar la cita:', error);
         this.isLoading = false;
+        alert('Error al completar la cita. Por favor, intente nuevamente.');
       }
     });
-    
-    this.subscriptions.push(subscription);
+  }
+
+  verResultadosCita(cita: Cita): void {
+    // Solo permitir ver resultados si hay paciente asignado
+    if (!this.tienePacienteAsignado(cita)) {
+      alert('No hay resultados disponibles para citas sin paciente asignado');
+      return;
+    }
+
+    this.citaSeleccionada = cita;
+    this.mostrarResultados = true;
+    this.resultadoCita = null;
   }
 
   cerrarResultados(): void {
@@ -200,181 +446,6 @@ export class MedicoDashboardComponent implements OnInit, OnDestroy {
     this.resultadoCita = null;
   }
 
-  guardarResultado(): void {
-    if (!this.citaSeleccionada) return;
-
-    this.isLoading = true;
-
-    // Primero actualizar la cita como completada
-    const citaUpdate: Partial<CitaDto> = {
-      estado: 'completada'
-    };
-
-    const updateSubscription = this.citaService.actualizarCita(this.citaSeleccionada._id, citaUpdate).subscribe({
-      next: (citaActualizada) => {
-        // Luego crear el resultado
-        const resultadoSubscription = this.resultadoService.crearResultado(this.resultadoData).subscribe({
-          next: (resultado) => {
-            this.isLoading = false;
-            this.cerrarEditor();
-            this.cargarCitas(); // Recargar lista para reflejar cambios
-          },
-          error: (error) => {
-            console.error('Error creando resultado:', error);
-            this.isLoading = false;
-          }
-        });
-        
-        this.subscriptions.push(resultadoSubscription);
-      },
-      error: (error) => {
-        console.error('Error actualizando cita:', error);
-        this.isLoading = false;
-      }
-    });
-    
-    this.subscriptions.push(updateSubscription);
-  }
-
-  // Método auxiliar para obtener ID del paciente
-  private getPacienteId(cita: Cita): string {
-    return typeof cita.paciente === 'string' ? cita.paciente : cita.paciente._id;
-  }
-
-  // Métodos auxiliares para obtener datos de pacientes
-  getPacienteNombre(cita: Cita): string {
-    // Manejar diferentes estructuras de datos que podrían venir del backend
-    if (typeof cita.paciente === 'object' && cita.paciente.user?.nombre) {
-      return cita.paciente.user.nombre;
-    } else if (typeof cita.paciente === 'object' && (cita.paciente as any).nombre) {
-      return (cita.paciente as any).nombre;
-    } else if (typeof cita.paciente === 'string') {
-      return 'Paciente (ID: ' + cita.paciente + ')';
-    }
-    return 'Paciente';
-  }
-
-  getPacienteEmail(cita: Cita): string {
-    if (typeof cita.paciente === 'object' && cita.paciente.user?.email) {
-      return cita.paciente.user.email;
-    } else if (typeof cita.paciente === 'object' && (cita.paciente as any).email) {
-      return (cita.paciente as any).email;
-    }
-    return 'No disponible';
-  }
-
-  getPacienteDocumento(cita: Cita): string {
-    if (typeof cita.paciente === 'object' && cita.paciente.documento) {
-      return cita.paciente.documento;
-    } else if (typeof cita.paciente === 'string') {
-      return 'Documento no disponible';
-    }
-    return 'No disponible';
-  }
-
-  getPacienteTelefono(cita: Cita): string {
-    if (typeof cita.paciente === 'object' && cita.paciente.telefono) {
-      return cita.paciente.telefono;
-    }
-    return 'No disponible';
-  }
-
-  getPacienteDireccion(cita: Cita): string {
-    if (typeof cita.paciente === 'object' && cita.paciente.direccion) {
-      return cita.paciente.direccion;
-    }
-    return 'No disponible';
-  }
-
-  // Métodos de formato
-  formatearFecha(fecha: string): string {
-    try {
-      return new Date(fecha).toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (error) {
-      return 'Fecha no disponible';
-    }
-  }
-
-  formatearFechaCorta(fecha: string): string {
-    try {
-      return new Date(fecha).toLocaleDateString('es-ES');
-    } catch (error) {
-      return 'Fecha no disponible';
-    }
-  }
-
-  formatearHora(fecha: string): string {
-    try {
-      return new Date(fecha).toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return 'Hora no disponible';
-    }
-  }
-
-  formatearFechaHora(fecha: string): string {
-    try {
-      return new Date(fecha).toLocaleString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return 'Fecha no disponible';
-    }
-  }
-
-  // Métodos para estados
-  getEstadoBadgeClass(estado: string): string {
-    switch (estado) {
-      case 'pendiente': return 'badge-pendiente';
-      case 'completada': return 'badge-completada';
-      case 'cancelada': return 'badge-cancelada';
-      case 'confirmada': return 'badge-confirmada';
-      default: return 'badge-pendiente';
-    }
-  }
-
-  getEstadoTexto(estado: string): string {
-    switch (estado) {
-      case 'pendiente': return 'Pendiente';
-      case 'completada': return 'Completada';
-      case 'cancelada': return 'Cancelada';
-      case 'confirmada': return 'Confirmada';
-      default: return estado;
-    }
-  }
-
-  getEstadoIcon(estado: string): string {
-    switch (estado) {
-      case 'pendiente': return 'fa-clock';
-      case 'completada': return 'fa-check-circle';
-      case 'cancelada': return 'fa-times-circle';
-      case 'confirmada': return 'fa-calendar-check';
-      default: return 'fa-clock';
-    }
-  }
-
-  getTipoConsultaTexto(tipo: string): string {
-    switch (tipo) {
-      case 'consulta': return 'Consulta General';
-      case 'seguimiento': return 'Seguimiento';
-      case 'emergencia': return 'Emergencia';
-      case 'control': return 'Control';
-      default: return tipo;
-    }
-  }
-
-  // Método para recargar citas
   recargarCitas(): void {
     this.cargarCitas();
   }

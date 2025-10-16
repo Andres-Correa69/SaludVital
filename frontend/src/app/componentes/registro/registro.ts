@@ -4,7 +4,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../servicios/auth.service';
+import { PacienteService } from '../../servicios/paciente.service';
 import { RegisterDto, AuthResponse } from '../../modelos/auth.models';
+import { PacienteDto } from '../../modelos/paciente.models';
 
 @Component({
   selector: 'app-registro',
@@ -16,16 +18,24 @@ import { RegisterDto, AuthResponse } from '../../modelos/auth.models';
 export class Registro implements OnInit, AfterViewInit, OnDestroy {
   // Inyectar servicios
   private authService = inject(AuthService);
+  private pacienteService = inject(PacienteService);
   private router = inject(Router);
   private elementRef = inject(ElementRef);
   private route = inject(ActivatedRoute);
 
-  // Campos del formulario
+  // Campos del formulario base
   nombre: string = '';
   email: string = '';
   password: string = '';
   confirmarPassword: string = '';
   rol: 'paciente' | 'medico' = 'paciente';
+  
+  // Campos específicos para paciente
+  documento: string = '';
+  telefono: string = '';
+  direccion: string = '';
+  fechaNacimiento: string = '';
+  grupoSanguineo: 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-' | '' = '';
   
   // Términos
   aceptoTerminos: boolean = false;
@@ -55,8 +65,13 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit() {
     this.clearMessages();
-    // Verificar si hay un parámetro de rol en la URL
     this.checkUrlParameters();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => {
+      this.initSmoothSwap();
+    }, 500);
   }
 
   ngOnDestroy() {
@@ -68,6 +83,7 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // Métodos de inicialización
   private checkUrlParameters(): void {
     this.route.queryParams.subscribe(params => {
       if (params['rol']) {
@@ -77,12 +93,6 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
         }
       }
     });
-  }
-
-  ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.initSmoothSwap();
-    }, 500);
   }
 
   private initSmoothSwap(): void {
@@ -175,7 +185,6 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     // Llamar al servicio de autenticación
     this.authService.register(registerDto).subscribe({
       next: (response: any) => {
-        this.isLoading = false;
         this.handleRegistrationSuccess(response);
       },
       error: (error: any) => {
@@ -186,14 +195,72 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleRegistrationSuccess(response: any): void {
-    const roleMessage = this.rol === 'medico' ? 
-      '¡Cuenta de médico creada exitosamente! Redirigiendo para completar tu perfil...' : 
-      '¡Cuenta de paciente creada exitosamente! Redirigiendo al inicio...';
+    console.log('✅ Respuesta del registro:', response);
     
-    this.showSuccessAlert(roleMessage);
+    // OBTENER EL USER ID CORRECTAMENTE - CORRECCIÓN PRINCIPAL
+    const userId = this.extractUserId(response);
+    
+    if (!userId) {
+      this.isLoading = false;
+      this.showErrorAlert('Error: No se pudo obtener el ID del usuario creado');
+      return;
+    }
+
+    if (this.rol === 'paciente') {
+      // Si es paciente, crear el perfil de paciente después del registro
+      this.crearPerfilPaciente(userId, response);
+    } else {
+      // Si es médico, redirigir para completar perfil
+      this.handleMedicoRegistration(userId, response);
+    }
+  }
+
+  // NUEVO MÉTODO PARA EXTRAER EL USER ID
+  private extractUserId(response: any): string | null {
+    console.log('🔍 Extrayendo user ID de:', response);
+    
+    // Diferentes formas en que podría venir el ID
+    if (response?.user?._id) return response.user._id;
+    if (response?.user?.id) return response.user.id;
+    if (response?._id) return response._id;
+    if (response?.id) return response.id;
+    if (response?.data?._id) return response.data._id;
+    if (response?.data?.id) return response.data.id;
+    if (response?.userId) return response.userId;
+    
+    return null;
+  }
+
+  private crearPerfilPaciente(userId: string, authResponse: any): void {
+    const pacienteDto: PacienteDto = {
+      user: userId, // USAR EL USER ID EXTRAÍDO CORRECTAMENTE
+      documento: this.documento.trim(),
+      telefono: this.telefono.trim(),
+      direccion: this.direccion.trim(),
+      fechaNacimiento: this.fechaNacimiento,
+      grupoSanguineo: this.grupoSanguineo || undefined
+    };
+
+    console.log('📝 Creando perfil de paciente:', pacienteDto);
+
+    this.pacienteService.crearPaciente(pacienteDto).subscribe({
+      next: (pacienteResponse: any) => {
+        this.isLoading = false;
+        this.handlePacienteRegistrationSuccess(userId, authResponse, pacienteResponse);
+      },
+      error: (error: any) => {
+        this.isLoading = false;
+        this.handlePacienteProfileError(error, userId, authResponse);
+      }
+    });
+  }
+
+  private handlePacienteRegistrationSuccess(userId: string, authResponse: any, pacienteResponse: any): void {
+    const successMessage = '¡Cuenta de paciente creada exitosamente! Redirigiendo al inicio...';
+    this.showSuccessAlert(successMessage);
     
     // Guardar información del usuario en localStorage
-    this.saveUserData(response);
+    this.saveUserData(userId, authResponse, pacienteResponse);
     
     // Redirección con timer
     this.redirectTimer = setTimeout(() => {
@@ -201,19 +268,51 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     }, 2500);
   }
 
-  private saveUserData(response: any): void {
+  private handlePacienteProfileError(error: any, userId: string, authResponse: any): void {
+    console.error('❌ Error creando perfil de paciente:', error);
+    
+    // Aunque falló la creación del perfil, el usuario fue creado
+    const warningMessage = 'Cuenta creada, pero hubo un error al completar el perfil. Podrás completarlo más tarde.';
+    this.showSuccessAlert(warningMessage);
+    
+    this.saveUserData(userId, authResponse);
+    
+    this.redirectTimer = setTimeout(() => {
+      this.redirectAfterRegistration();
+    }, 3000);
+  }
+
+  private handleMedicoRegistration(userId: string, response: any): void {
+    this.isLoading = false;
+    const roleMessage = '¡Cuenta de médico creada exitosamente! Redirigiendo para completar tu perfil...';
+    this.showSuccessAlert(roleMessage);
+    
+    this.saveUserData(userId, response);
+    
+    this.redirectTimer = setTimeout(() => {
+      this.redirectAfterRegistration();
+    }, 2500);
+  }
+
+  // ACTUALIZADO: Ahora recibe userId explícitamente
+  private saveUserData(userId: string, authResponse: any, pacienteResponse?: any): void {
     // Guardar token si está disponible
-    if (response.token) {
-      localStorage.setItem('auth_token', response.token);
+    if (authResponse.token) {
+      localStorage.setItem('auth_token', authResponse.token);
     }
     
     // Guardar información básica del usuario
     const userData = {
-      id: response.id,
+      id: userId, // USAR EL USER ID QUE SABEMOS QUE ES CORRECTO
       nombre: this.nombre,
       email: this.email,
       rol: this.rol,
-      registradoEn: new Date().toISOString()
+      registradoEn: new Date().toISOString(),
+      // Si es paciente y se creó el perfil, guardar información adicional
+      ...(this.rol === 'paciente' && pacienteResponse && {
+        pacienteId: pacienteResponse._id || pacienteResponse.id,
+        perfilCompletado: true
+      })
     };
     
     localStorage.setItem('user_data', JSON.stringify(userData));
@@ -247,7 +346,7 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleRegistrationError(error: any): void {
-    console.error('Error en registro:', error);
+    console.error('❌ Error en registro:', error);
     
     let errorMessage = 'Error al crear la cuenta. Inténtalo de nuevo.';
     
@@ -274,6 +373,7 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     this.redirectAfterRegistration();
   }
 
+  // Métodos de alertas y mensajes
   private showErrorAlert(message: string): void {
     this.errorMessage = message;
     this.showError = true;
@@ -300,6 +400,7 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     this.showError = false;
   }
 
+  // Métodos de eventos
   onKeyPress(event: KeyboardEvent): void {
     if (event.key === 'Enter') {
       this.onRegister();
@@ -329,7 +430,7 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     this.router.navigate(['/privacidad']);
   }
 
-  // Métodos de validación
+  // Métodos de validación (se mantienen igual)
   validateNombre(): boolean {
     return this.nombre.trim().length >= 2;
   }
@@ -347,7 +448,28 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
     return this.password === this.confirmarPassword && this.password.length > 0;
   }
 
-  // Métodos para fortaleza de contraseña
+  validateDocumento(): boolean {
+    return this.documento.trim().length >= 6;
+  }
+
+  validateTelefono(): boolean {
+    return this.telefono.trim().length >= 8;
+  }
+
+  validateDireccion(): boolean {
+    return this.direccion.trim().length >= 10;
+  }
+
+  validateFechaNacimiento(): boolean {
+    if (!this.fechaNacimiento) return false;
+    
+    const fechaNac = new Date(this.fechaNacimiento);
+    const hoy = new Date();
+    const edad = hoy.getFullYear() - fechaNac.getFullYear();
+    
+    return edad >= 0 && edad <= 120;
+  }
+
   getPasswordStrength(): string {
     if (!this.password) return 'empty';
     
@@ -374,29 +496,58 @@ export class Registro implements OnInit, AfterViewInit, OnDestroy {
   private calculatePasswordStrength(): number {
     let strength = 0;
     
-    // Longitud
     if (this.password.length >= 8) strength += 25;
     else if (this.password.length >= 6) strength += 15;
     
-    // Mayúsculas y minúsculas
     if (/[a-z]/.test(this.password) && /[A-Z]/.test(this.password)) strength += 25;
     
-    // Números
     if (/\d/.test(this.password)) strength += 25;
     
-    // Caracteres especiales
     if (/[^A-Za-z0-9]/.test(this.password)) strength += 25;
     
     return Math.min(strength, 100);
   }
 
+  calcularEdad(): number {
+    if (!this.fechaNacimiento) return 0;
+    
+    const fechaNac = new Date(this.fechaNacimiento);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fechaNac.getFullYear();
+    
+    const mes = hoy.getMonth();
+    const dia = hoy.getDate();
+    
+    if (mes < fechaNac.getMonth() || 
+        (mes === fechaNac.getMonth() && dia < fechaNac.getDate())) {
+      edad--;
+    }
+    
+    return edad;
+  }
+
+  getMaxDate(): string {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+
   isFormValid(): boolean {
-    return this.validateNombre() && 
-           this.validateEmail() && 
-           this.validatePassword() && 
-           this.validatePasswordMatch() && 
-           this.aceptoTerminos && 
-           !this.isLoading;
+    const baseValid = this.validateNombre() && 
+                     this.validateEmail() && 
+                     this.validatePassword() && 
+                     this.validatePasswordMatch() && 
+                     this.aceptoTerminos && 
+                     !this.isLoading;
+
+    if (this.rol === 'paciente') {
+      return baseValid && 
+             this.validateDocumento() && 
+             this.validateTelefono() && 
+             this.validateDireccion() && 
+             this.validateFechaNacimiento();
+    }
+
+    return baseValid;
   }
 
   createLinkParticles(event: MouseEvent): void {

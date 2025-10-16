@@ -1,28 +1,20 @@
+import { Paciente } from './paciente.models';
+
 export interface CitaDto {
   paciente: string;
   fecha: string; // ISO string format
   motivo: string;
   estado?: 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
-  medico?: string; // ← AÑADIDO campo médico
+  medico?: string;
 }
 
 export interface Cita {
   _id: string;
-  paciente: {
-    _id: string;
-    user?: {
-      nombre: string;
-      email: string;
-    };
-    documento: string;
-    // Campos adicionales que podrían venir del populate
-    telefono?: string;
-    direccion?: string;
-  };
+  paciente: Paciente; // Usa la interfaz Paciente completa
   fecha: string;
   motivo: string;
   estado: string;
-  medico?: string; // ← AÑADIDO campo médico
+  medico?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,4 +28,8 @@ export interface CitaResponse {
 // Interface para filtros de búsqueda
 export interface CitaFiltros {
   paciente?: string;
+  medico?: string;
+  estado?: 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
+  fechaInicio?: string;
+  fechaFin?: string;
 }

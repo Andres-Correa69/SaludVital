@@ -8,7 +8,7 @@ import { AlertasSalud } from './componentes/alertas-salud/alertas-salud';
 import { Perfil } from './componentes/perfil/perfil';
 import { Registro } from './componentes/registro/registro';
 import { authGuard } from './guards/auth.guards';
-import { MedicoDashboardComponent } from './componentes/medico/medico-dashboard/medico-dashboard';
+import { MedicoDashboard } from './componentes/medico/medico-dashboard/medico-dashboard';
 
 
 export const routes: Routes = [
@@ -52,7 +52,7 @@ export const routes: Routes = [
   },
   { 
     path: 'medico', 
-    component: MedicoDashboardComponent,
+    component: MedicoDashboard,
     canActivate: [authGuard]
   },
   { 
