@@ -36,8 +36,7 @@ connectToDatabase().catch((err) => {
   process.exit(1);
 });
 
-// Servir archivos estáticos de Angular
-app.use(express.static(path.join(__dirname, '../frontend/dist/frontend')));
+
 
 // Rutas básicas
 app.get('/', (req, res) => {

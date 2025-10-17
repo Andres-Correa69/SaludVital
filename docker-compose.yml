@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Servicio del Backend
+  backend:
+    # Construye la imagen usando el Dockerfile en la carpeta ./backend
+    build: ./backend
+    # Mapea el puerto 3000 del host al puerto 3000 del contenedor
+    ports:
+      - "3000:3000"
+    # Define las variables de entorno para el contenedor del backend
+    environment:
+      # Pasamos la URI de la base de datos directamente.
+      # NOTA: En un entorno de producción real, esto se gestionaría de forma más segura.
+      - MONGO_URI=mongodb+srv://SaludVital2025:SaludVital2025@saludvital2025.84asiyq.mongodb.net/saludvital
+      # Configuramos CORS para que acepte peticiones desde el frontend
+      - CORS_ORIGIN=http://localhost:4200
+
+  # Servicio del Frontend
+  frontend:
+    # Construye la imagen usando el Dockerfile en la carpeta ./frontend
+    build: ./frontend
+    # Mapea el puerto 4200 del host al puerto 80 del contenedor (donde corre Nginx)
+    ports:
+      - "4200:80"
+    # Le indica a Docker que este servicio debe iniciarse después del backend
+    depends_on:
+      - backend
