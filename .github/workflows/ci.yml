@@ -1,0 +1,35 @@
+name: Integración Continua
+
+# Este workflow se ejecuta en cada push a cualquier rama
+on: [push]
+
+jobs:
+  build-and-test:
+    # Se ejecuta en un servidor de Ubuntu proporcionado por GitHub
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descarga el código del repositorio
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # 2. Configura el entorno de Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Instala dependencias y corre pruebas del Backend
+      - name: Backend - Instalar y Probar
+        run: |
+          cd backend
+          npm install
+          npm test
+
+      # 4. Instala dependencias y corre pruebas del Frontend
+      - name: Frontend - Instalar y Probar
+        run: |
+          cd frontend
+          npm install
+          # Usamos ChromeHeadless para que no intente abrir un navegador visual
+          ng test --watch=false --browsers=ChromeHeadless
