@@ -10,7 +10,7 @@ describe('Login', () => {
     await TestBed.configureTestingModule({
       imports: [Login],
       providers: [
-        { provide: ActivatedRoute, useValue: {} }
+        { provide: ActivatedRoute, useValue: { queryParams: of({}) } }
       ]
     })
     .compileComponents();
@@ -23,4 +23,6 @@ describe('Login', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+});
+
 });
