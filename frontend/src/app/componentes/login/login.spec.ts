@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
+import { of } from 'rxjs';
 import { Login } from './login';
 
 describe('Login', () => {
@@ -10,7 +11,12 @@ describe('Login', () => {
     await TestBed.configureTestingModule({
       imports: [Login],
       providers: [
-        { provide: ActivatedRoute, useValue: { queryParams: of({}) } }
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            queryParams: of({})
+          }
+        }
       ]
     })
     .compileComponents();
@@ -23,6 +29,4 @@ describe('Login', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
-});
-
 });
