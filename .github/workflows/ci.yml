@@ -32,4 +32,4 @@ jobs:
           cd frontend
           npm install
           # Usamos ChromeHeadless para que no intente abrir un navegador visual
-          ng test --watch=false --browsers=ChromeHeadless
+          npx ng test --watch=false --browsers=ChromeHeadless
