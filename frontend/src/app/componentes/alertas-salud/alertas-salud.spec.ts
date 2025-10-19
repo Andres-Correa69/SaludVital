@@ -1,14 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AlertasSaludComponent } from './alertas-salud';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
-describe('AlertasSalud', () => {
+describe('AlertasSaludComponent', () => {
   let component: AlertasSaludComponent;
   let fixture: ComponentFixture<AlertasSaludComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AlertasSaludComponent]
+      imports: [AlertasSaludComponent, HttpClientTestingModule]
     })
     .compileComponents();
 

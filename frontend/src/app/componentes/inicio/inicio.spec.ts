@@ -1,14 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { InicioComponent } from './inicio';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
-describe('Inicio', () => {
+describe('InicioComponent', () => {
   let component: InicioComponent;
   let fixture: ComponentFixture<InicioComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [InicioComponent]
+      imports: [InicioComponent, HttpClientTestingModule]
     })
     .compileComponents();
 

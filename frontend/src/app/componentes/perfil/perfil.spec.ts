@@ -1,14 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { PerfilComponent } from './perfil';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 
-describe('Perfil', () => {
+describe('PerfilComponent', () => {
   let component: PerfilComponent;
   let fixture: ComponentFixture<PerfilComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PerfilComponent]
+      imports: [PerfilComponent, HttpClientTestingModule]
     })
     .compileComponents();
 
