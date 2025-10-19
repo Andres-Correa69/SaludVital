@@ -43,4 +43,20 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(this.tokenKey);
   }
+
+  getCurrentUser(): any | null {
+    const token = this.getToken();
+    if (!token) {
+      return null;
+    }
+
+    try {
+      // Decodificar la parte del payload del token (la segunda parte)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload;
+    } catch (e) {
+      console.error('Error al decodificar el token', e);
+      return null;
+    }
+  }
 }
