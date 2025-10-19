@@ -10,7 +10,7 @@ import { Navbar } from '../navbar/navbar';
   templateUrl: './inicio.html',
   styleUrls: ['./inicio.css']
 })
-export class Inicio implements OnInit {
+export class InicioComponent implements OnInit {
 
   constructor(private router: Router) {}
 
