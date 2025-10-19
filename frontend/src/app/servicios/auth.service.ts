@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-import { LoginDTO } from '../modelos/login.dto';
-import { RegistroDTO } from '../modelos/registro.dto';
-import { AuthResponseDTO } from '../modelos/auth-response.dto';
+import { LoginDto } from '../modelos/login.dto';
+import { RegisterDto } from '../modelos/registro.dto';
+import { AuthResponse } from '../modelos/auth-response.dto';
 
 @Injectable({
   providedIn: 'root'
@@ -14,8 +14,8 @@ export class AuthService {
 
   constructor(private http: HttpClient) { }
 
-  login(credentials: LoginDTO): Observable<AuthResponseDTO> {
-    return this.http.post<AuthResponseDTO>(`${this.apiUrl}/login`, credentials).pipe(
+  login(credentials: LoginDto): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
       tap(response => {
         if (response && response.token) {
           this.setToken(response.token);
@@ -24,7 +24,7 @@ export class AuthService {
     );
   }
 
-  register(data: RegistroDTO): Observable<any> {
+  register(data: RegisterDto): Observable<any> {
     return this.http.post(`${this.apiUrl}/register`, data);
   }
 

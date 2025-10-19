@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../servicios/auth.service';
-import { RegistroDTO } from '../../modelos/registro.dto';
+import { RegisterDto } from '../../modelos/registro.dto';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./registro.css']
 })
 export class RegistroComponent {
-  registroData: RegistroDTO = { nombre: '', email: '', password: '' };
+  registroData: RegisterDto = { nombre: '', email: '', password: '' };
   errorMessage: string = '';
   successMessage: string = '';
 

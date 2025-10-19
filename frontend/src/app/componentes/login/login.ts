@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../servicios/auth.service';
-import { LoginDTO } from '../../modelos/login.dto';
+import { LoginDto } from '../../modelos/login.dto';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./login.css']
 })
 export class LoginComponent {
-  credentials: LoginDTO = { email: '', password: '' };
+  credentials: LoginDto = { email: '', password: '' };
   errorMessage: string = '';
 
   constructor(

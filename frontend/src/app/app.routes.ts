@@ -1,12 +1,12 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './componentes/login/login.component';
-import { InicioComponent } from './componentes/inicio/inicio.component';
-import { AgendarCitaComponent } from './componentes/agendar-cita/agendar-cita.component';
-import { ListaCitasComponent } from './componentes/lista-citas/lista-citas.component';
-import { ResultadosMedicosComponent } from './componentes/resultados-medicos/resultados-medicos.component';
-import { AlertasSaludComponent } from './componentes/alertas-salud/alertas-salud.component';
-import { PerfilComponent } from './componentes/perfil/perfil.component';
-import { RegistroComponent } from './componentes/registro/registro.component';
+import { LoginComponent } from './componentes/login/login';
+import { InicioComponent } from './componentes/inicio/inicio';
+import { AgendarCitaComponent } from './componentes/agendar-cita/agendar-cita';
+import { ListaCitasComponent } from './componentes/lista-citas/lista-citas';
+import { ResultadosMedicosComponent } from './componentes/resultados-medicos/resultados-medicos';
+import { AlertasSaludComponent } from './componentes/alertas-salud/alertas-salud';
+import { PerfilComponent } from './componentes/perfil/perfil';
+import { RegistroComponent } from './componentes/registro/registro';
 import { authGuard } from './guards/auth.guards';
 
 export const routes: Routes = [
