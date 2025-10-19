@@ -1,1 +1,30 @@
-<p>alertas-salud works!</p>
+<div class="container mt-4">
+  <h2>Alertas de Salud</h2>
+  <p>Revisa aquí las notificaciones y alertas importantes sobre tu salud.</p>
+  <hr>
+
+  <div *ngIf="isLoading" class="text-center mt-5">
+    <p>Cargando alertas...</p>
+  </div>
+
+  <div *ngIf="!isLoading && errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="!isLoading && !errorMessage && alertas.length > 0; else noAlertas" class="list-group">
+    <a href="#" *ngFor="let alerta of alertas" class="list-group-item list-group-item-action" [class.list-group-item-secondary]="alerta.leida">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1" [class.fw-normal]="alerta.leida">{{ alerta.mensaje }}</h5>
+        <small>{{ alerta.fecha | date:'short' }}</small>
+      </div>
+      <small *ngIf="!alerta.leida" class="text-danger fw-bold">NUEVA</small>
+      <small *ngIf="alerta.leida" class="text-muted">Leída</small>
+    </a>
+  </div>
+
+  <ng-template #noAlertas>
+    <div *ngIf="!isLoading && !errorMessage" class="text-center mt-5">
+      <h4>No tienes alertas de salud pendientes.</h4>
+    </div>
+  </ng-template>
+</div>

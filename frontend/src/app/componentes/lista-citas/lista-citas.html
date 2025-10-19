@@ -1,348 +1,43 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mis Citas - Salud Vital</title>
-  <link rel="stylesheet" href="lista-citas.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-  <!-- Navbar -->
-  <app-navbar></app-navbar>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Mis Citas Médicas</h2>
+    <a routerLink="/agendar-cita" class="btn btn-primary">Agendar Nueva Cita</a>
+  </div>
 
-  <!-- Contenido Principal -->
-  <main class="citas-container">
-    <!-- Header -->
-    <div class="citas-header">
-      <h1 class="page-title">
-        <i class="fas fa-calendar-alt"></i>
-        Mis Citas Médicas
-      </h1>
-      <p class="page-subtitle">Gestiona y revisa todas tus citas programadas</p>
-      
-      <div class="header-actions">
-        <button class="btn-primary" (click)="irAAgendarCita()">
-          <i class="fas fa-plus"></i>
-          Nueva Cita
-          <div class="button-particles">
-            <div class="button-particle"></div>
-            <div class="button-particle"></div>
-            <div class="button-particle"></div>
-          </div>
-        </button>
-        
-        <div class="filter-controls">
-          <select class="filter-select" [(ngModel)]="filtroEstado" (change)="filtrarCitas()">
-            <option value="todas">Todas las Citas</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="confirmada">Confirmadas</option>
-            <option value="completada">Completadas</option>
-            <option value="cancelada">Canceladas</option>
-          </select>
-        </div>
+  <div *ngIf="isLoading" class="text-center mt-5">
+    <p>Cargando citas...</p>
+  </div>
+
+  <div *ngIf="!isLoading && errorMessage" class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="!isLoading && !errorMessage && citas.length > 0; else noCitas" class="list-group">
+    <div *ngFor="let cita of citas" class="list-group-item list-group-item-action flex-column align-items-start mb-2">
+      <div class="d-flex w-100 justify-content-between">
+        <h5 class="mb-1 text-primary">{{ cita.especialidad }}</h5>
+        <small>{{ cita.fecha | date:'fullDate' }} a las {{ cita.fecha | date:'shortTime' }}</small>
       </div>
+      <p class="mb-1">{{ cita.descripcion || 'Sin descripción adicional.' }}</p>
+      <small>Estado: 
+        <span 
+          class="badge"
+          [ngClass]="{
+            'bg-success': cita.estado === 'programada',
+            'bg-secondary': cita.estado === 'realizada',
+            'bg-danger': cita.estado === 'cancelada'
+          }"
+        >
+          {{ cita.estado }}
+        </span>
+      </small>
     </div>
+  </div>
 
-    <!-- Estadísticas Rápidas -->
-    <div class="stats-cards">
-      <div class="stat-card">
-        <div class="stat-icon pending">
-          <i class="fas fa-clock"></i>
-        </div>
-        <div class="stat-info">
-          <div class="stat-number">{{contadores.pendientes}}</div>
-          <div class="stat-label">Pendientes</div>
-        </div>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-icon confirmed">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="stat-info">
-          <div class="stat-number">{{contadores.confirmadas}}</div>
-          <div class="stat-label">Confirmadas</div>
-        </div>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-icon completed">
-          <i class="fas fa-calendar-check"></i>
-        </div>
-        <div class="stat-info">
-          <div class="stat-number">{{contadores.completadas}}</div>
-          <div class="stat-label">Completadas</div>
-        </div>
-      </div>
-      
-      <div class="stat-card">
-        <div class="stat-icon total">
-          <i class="fas fa-list"></i>
-        </div>
-        <div class="stat-info">
-          <div class="stat-number">{{contadores.totales}}</div>
-          <div class="stat-label">Total Citas</div>
-        </div>
-      </div>
+  <ng-template #noCitas>
+    <div *ngIf="!isLoading && !errorMessage" class="text-center mt-5">
+      <h4>No tienes citas programadas.</h4>
+      <p>Puedes agendar una nueva cita cuando lo necesites.</p>
     </div>
-
-    <!-- Lista de Citas -->
-    <div class="citas-content">
-      <div class="citas-list">
-        <!-- Citas Próximas -->
-        <div class="citas-section" *ngIf="citasProximas.length > 0">
-          <h3 class="section-title">
-            <i class="fas fa-calendar-day"></i>
-            Próximas Citas
-            <span class="badge">{{citasProximas.length}}</span>
-          </h3>
-          
-          <div class="citas-grid">
-            <div *ngFor="let cita of citasProximas" class="cita-card upcoming">
-              <div class="cita-header">
-                <div class="cita-status" [class]="'status-' + cita.estado">
-                  <i class="fas" [class]="getEstadoIcon(cita.estado)"></i>
-                  {{getEstadoTexto(cita.estado)}}
-                </div>
-                <div class="cita-actions">
-                  <button class="action-btn info" (click)="verDetalles(cita)" title="Ver detalles">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button class="action-btn edit" (click)="editarCita(cita)" title="Editar cita" *ngIf="cita.estado === 'pendiente'">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="action-btn cancel" (click)="cancelarCita(cita)" title="Cancelar cita" *ngIf="cita.estado === 'pendiente' || cita.estado === 'confirmada'">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="cita-body">
-                <div class="cita-info">
-                  <div class="info-item">
-                    <i class="fas fa-user-md"></i>
-                    <div class="info-content">
-                      <span class="info-label">Médico</span>
-                      <span class="info-value">{{cita.medico}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
-                    <i class="fas fa-stethoscope"></i>
-                    <div class="info-content">
-                      <span class="info-label">Especialidad</span>
-                      <span class="info-value">{{cita.especialidad}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
-                    <i class="fas fa-calendar"></i>
-                    <div class="info-content">
-                      <span class="info-label">Fecha y Hora</span>
-                      <span class="info-value">{{formatearFechaHora(cita.fecha, cita.hora)}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <div class="info-content">
-                      <span class="info-label">Ubicación</span>
-                      <span class="info-value">{{cita.ubicacion}}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="cita-motivo">
-                  <span class="motivo-label">Motivo:</span>
-                  <p class="motivo-text">{{cita.motivo}}</p>
-                </div>
-              </div>
-              
-              <div class="cita-footer" *ngIf="cita.estado === 'pendiente'">
-                <button class="btn-confirm" (click)="confirmarCita(cita)">
-                  <i class="fas fa-check"></i>
-                  Confirmar Cita
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Citas Pasadas -->
-        <div class="citas-section" *ngIf="citasPasadas.length > 0">
-          <h3 class="section-title">
-            <i class="fas fa-history"></i>
-            Citas Anteriores
-            <span class="badge">{{citasPasadas.length}}</span>
-          </h3>
-          
-          <div class="citas-grid">
-            <div *ngFor="let cita of citasPasadas" class="cita-card past">
-              <div class="cita-header">
-                <div class="cita-status" [class]="'status-' + cita.estado">
-                  <i class="fas" [class]="getEstadoIcon(cita.estado)"></i>
-                  {{getEstadoTexto(cita.estado)}}
-                </div>
-                <div class="cita-actions">
-                  <button class="action-btn info" (click)="verDetalles(cita)" title="Ver detalles">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="cita-body">
-                <div class="cita-info">
-                  <div class="info-item">
-                    <i class="fas fa-user-md"></i>
-                    <div class="info-content">
-                      <span class="info-label">Médico</span>
-                      <span class="info-value">{{cita.medico}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
-                    <i class="fas fa-stethoscope"></i>
-                    <div class="info-content">
-                      <span class="info-label">Especialidad</span>
-                      <span class="info-value">{{cita.especialidad}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item">
-                    <i class="fas fa-calendar"></i>
-                    <div class="info-content">
-                      <span class="info-label">Fecha</span>
-                      <span class="info-value">{{formatearFecha(cita.fecha)}}</span>
-                    </div>
-                  </div>
-                  
-                  <div class="info-item" *ngIf="cita.diagnostico">
-                    <i class="fas fa-file-medical"></i>
-                    <div class="info-content">
-                      <span class="info-label">Diagnóstico</span>
-                      <span class="info-value">{{cita.diagnostico}}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="cita-notes" *ngIf="cita.notas">
-                  <span class="notes-label">Notas:</span>
-                  <p class="notes-text">{{cita.notas}}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Estado vacío -->
-        <div class="empty-state" *ngIf="citasFiltradas.length === 0">
-          <div class="empty-icon">
-            <i class="fas fa-calendar-times"></i>
-          </div>
-          <h3>No hay citas {{getMensajeEstadoVacio()}}</h3>
-          <p>Parece que no tienes citas médicas programadas en este momento.</p>
-          <button class="btn-primary" (click)="irAAgendarCita()">
-            <i class="fas fa-plus"></i>
-            Agendar Primera Cita
-          </button>
-        </div>
-      </div>
-
-      <!-- Panel Lateral -->
-      <div class="sidebar">
-        <!-- Próxima Cita -->
-        <div class="sidebar-card" *ngIf="proximaCita">
-          <h4 class="sidebar-title">
-            <i class="fas fa-star"></i>
-            Próxima Cita
-          </h4>
-          
-          <div class="next-appointment">
-            <div class="appointment-date">
-              <div class="date-badge">
-                <span class="day">{{getDia(proximaCita.fecha)}}</span>
-                <span class="month">{{getMes(proximaCita.fecha)}}</span>
-              </div>
-              <div class="appointment-info">
-                <div class="appointment-time">{{proximaCita.hora}}</div>
-                <div class="appointment-doctor">{{proximaCita.medico}}</div>
-                <div class="appointment-specialty">{{proximaCita.especialidad}}</div>
-              </div>
-            </div>
-            
-            <div class="appointment-actions">
-              <button class="btn-secondary small" (click)="verDetalles(proximaCita)">
-                <i class="fas fa-eye"></i>
-                Ver
-              </button>
-              <button class="btn-primary small" (click)="confirmarCita(proximaCita)" *ngIf="proximaCita.estado === 'pendiente'">
-                <i class="fas fa-check"></i>
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recordatorios -->
-        <div class="sidebar-card">
-          <h4 class="sidebar-title">
-            <i class="fas fa-bell"></i>
-            Recordatorios
-          </h4>
-          
-          <div class="reminders-list">
-            <div class="reminder-item" *ngFor="let recordatorio of recordatorios">
-              <div class="reminder-icon">
-                <i class="fas" [class]="recordatorio.icono"></i>
-              </div>
-              <div class="reminder-content">
-                <p class="reminder-text">{{recordatorio.texto}}</p>
-                <span class="reminder-time">{{recordatorio.tiempo}}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Acciones Rápidas -->
-        <div class="sidebar-card">
-          <h4 class="sidebar-title">
-            <i class="fas fa-bolt"></i>
-            Acciones Rápidas
-          </h4>
-          
-          <div class="quick-actions">
-            <button class="quick-action" (click)="descargarHistorial()">
-              <i class="fas fa-download"></i>
-              Descargar Historial
-            </button>
-            <button class="quick-action" (click)="contactarSoporte()">
-              <i class="fas fa-headset"></i>
-              Contactar Soporte
-            </button>
-            <button class="quick-action" (click)="verResultados()">
-              <i class="fas fa-file-medical-alt"></i>
-              Ver Resultados
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de Detalles -->
-    <div *ngIf="citaSeleccionada" class="modal-overlay" (click)="cerrarModal()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>Detalles de la Cita</h3>
-          <button class="modal-close" (click)="cerrarModal()">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="modal-body">
-          <!-- Contenido del modal con detalles completos de la cita -->
-        </div>
-      </div>
-    </div>
-  </main>
-</body>
-</html>
+  </ng-template>
+</div>

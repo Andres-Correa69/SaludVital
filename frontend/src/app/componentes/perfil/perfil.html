@@ -1,1 +1,35 @@
-<p>perfil works!</p>
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header">
+      <h2>Mi Perfil</h2>
+    </div>
+    <div class="card-body" *ngIf="perfil; else loadingOrError">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Nombre:</strong> {{ perfil.nombre }}</p>
+          <p><strong>Apellido:</strong> {{ perfil.apellido }}</p>
+          <p><strong>Género:</strong> {{ perfil.genero }}</p>
+          <p><strong>Fecha de Nacimiento:</strong> {{ perfil.fechaNacimiento | date:'dd/MM/yyyy' }}</p>
+        </div>
+        <div class="col-md-6">
+          <h5>Información de Contacto</h5>
+          <p><strong>Teléfono:</strong> {{ perfil.informacionContacto.telefono }}</p>
+          <p><strong>Dirección:</strong> {{ perfil.informacionContacto.direccion }}</p>
+        </div>
+      </div>
+      <hr>
+      <button (click)="logout()" class="btn btn-danger">Cerrar Sesión</button>
+    </div>
+  </div>
+</div>
+
+<ng-template #loadingOrError>
+  <div class="card-body">
+    <div *ngIf="errorMessage; else loading" class="alert alert-danger">
+      {{ errorMessage }}
+    </div>
+    <ng-template #loading>
+      <p>Cargando información del perfil...</p>
+    </ng-template>
+  </div>
+</ng-template>
